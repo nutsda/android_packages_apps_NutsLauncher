@@ -127,6 +127,7 @@ public final class Utilities {
             TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
     public static final String ALLOW_ROTATION_PREFERENCE_KEY = "pref_allowRotation";
+    public static final String SHOW_NOTIFICATION_DOT_COUNT_PREFERENCE_KEY = "pref_icon_badging_numbers";
 
     public static boolean isPropertyEnabled(String propertyName) {
         return Log.isLoggable(propertyName, Log.VERBOSE);
@@ -147,6 +148,10 @@ public final class Utilities {
             return originalSmallestWidth >= 600;
         }
         return false;
+    }
+
+    public static boolean isShowNotificationDotCount(Context context) {
+	return getPrefs(context).getBoolean(SHOW_NOTIFICATION_DOT_COUNT_PREFERENCE_KEY, true);
     }
 
     /**

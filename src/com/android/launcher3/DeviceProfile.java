@@ -229,6 +229,7 @@ public class DeviceProfile {
 
         // This is done last, after iconSizePx is calculated above.
         mBadgeRenderer = new BadgeRenderer(context, iconSizePx);
+	mBadgeRenderer.setShowNotificationDotCount(Utilities.isShowNotificationDotCount(context));
     }
 
     DeviceProfile getMultiWindowProfile(Context context, Point mwSize) {
@@ -700,6 +701,9 @@ public class DeviceProfile {
         Configuration context = new Configuration(c.getResources().getConfiguration());
         context.orientation = orientation;
         return c.createConfigurationContext(context);
+    }
 
+    public void setShowNotificationDotCount(boolean value) {
+	mBadgeRenderer.setShowNotificationDotCount(value);
     }
 }

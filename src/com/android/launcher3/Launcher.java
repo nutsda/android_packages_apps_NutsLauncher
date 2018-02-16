@@ -2803,6 +2803,9 @@ public class Launcher extends BaseActivity
                 // Recreate the activity so that it initializes the rotation preference again.
                 recreate();
             }
+	    if (Utilities.SHOW_NOTIFICATION_DOT_COUNT_PREFERENCE_KEY.equals(key)) {
+		mDeviceProfile.setShowNotificationDotCount(Utilities.isShowNotificationDotCount(Launcher.this));
+	    }
         }
     }
 

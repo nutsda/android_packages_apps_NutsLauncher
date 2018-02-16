@@ -30,6 +30,13 @@
     </com.android.launcher3.views.ButtonPreference>
 
     <SwitchPreference
+        android:defaultValue="false"
+        android:key="pref_icon_badging_numbers"
+        android:persistent="true"
+        android:title="@string/pref_icon_badging_numbers_title"
+	android:summary="@string/pref_icon_badging_numbers_summary" />
+
+    <SwitchPreference
         android:key="pref_add_icon_to_home"
         android:title="@string/auto_add_shortcuts_label"
         android:summary="@string/auto_add_shortcuts_description"

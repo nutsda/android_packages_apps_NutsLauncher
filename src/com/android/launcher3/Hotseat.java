@@ -17,34 +17,35 @@
 package com.android.launcher3;
 
 import static com.android.launcher3.LauncherState.ALL_APPS;
+import static com.android.launcher3.LauncherState.NORMAL;
 
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewDebug;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.android.launcher3.config.FeatureFlags;
-import com.android.launcher3.logging.UserEventDispatcher.LogContainerProvider;
+import com.android.launcher3.logging.UserEventDispatcher;
 import com.android.launcher3.userevent.nano.LauncherLogProto.Action;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ControlType;
 import com.android.launcher3.userevent.nano.LauncherLogProto.Target;
 
-public class Hotseat extends FrameLayout implements LogContainerProvider, Insettable {
+public class Hotseat extends FrameLayout
+        implements UserEventDispatcher.LogContainerProvider {
 
-    private final Launcher mLauncher;
     private CellLayout mContent;
 
+    private Launcher mLauncher;
+
     @ViewDebug.ExportedProperty(category = "launcher")
-    private boolean mHasVerticalHotseat;
+    private final boolean mHasVerticalHotseat;
 
     public Hotseat(Context context) {
         this(context, null);
@@ -57,10 +58,26 @@ public class Hotseat extends FrameLayout implements LogContainerProvider, Insett
     public Hotseat(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mLauncher = Launcher.getLauncher(context);
+        mHasVerticalHotseat = mLauncher.getDeviceProfile().isVerticalBarLayout();
     }
 
     public CellLayout getLayout() {
         return mContent;
+    }
+
+    /**
+     * Returns whether there are other icons than the all apps button in the hotseat.
+     */
+    public boolean hasIcons() {
+        return mContent.getShortcutsAndWidgets().getChildCount() > 1;
+    }
+
+    /**
+     * Registers the specified listener on the cell layout of the hotseat.
+     */
+    @Override
+    public void setOnLongClickListener(OnLongClickListener l) {
+        mContent.setOnLongClickListener(l);
     }
 
     /* Get the orientation invariant order of the item in the hotseat for persistence. */
@@ -80,18 +97,19 @@ public class Hotseat extends FrameLayout implements LogContainerProvider, Insett
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        mContent = findViewById(R.id.layout);
+        DeviceProfile grid = mLauncher.getDeviceProfile();
+        mContent = (CellLayout) findViewById(R.id.layout);
+        if (grid.isVerticalBarLayout()) {
+            mContent.setGridSize(1, grid.inv.numHotseatIcons);
+        } else {
+            mContent.setGridSize(grid.inv.numHotseatIcons, 1);
+        }
+
+        resetLayout();
     }
 
-    void resetLayout(boolean hasVerticalHotseat) {
+    void resetLayout() {
         mContent.removeAllViewsInLayout();
-        mHasVerticalHotseat = hasVerticalHotseat;
-        InvariantDeviceProfile idp = mLauncher.getDeviceProfile().inv;
-        if (hasVerticalHotseat) {
-            mContent.setGridSize(1, idp.numHotseatIcons);
-        } else {
-            mContent.setGridSize(idp.numHotseatIcons, 1);
-        }
 
         if (!FeatureFlags.NO_ALL_APPS_ICON) {
             // Add the Apps button
@@ -112,6 +130,7 @@ public class Hotseat extends FrameLayout implements LogContainerProvider, Insett
             allAppsButton.setCompoundDrawables(null, d, null, null);
 
             allAppsButton.setContentDescription(context.getString(R.string.all_apps_button_label));
+            allAppsButton.setOnKeyListener(new HotseatIconKeyEventListener());
             if (mLauncher != null) {
                 allAppsButton.setOnClickListener((v) -> {
                     if (!mLauncher.isInState(ALL_APPS)) {
@@ -146,31 +165,5 @@ public class Hotseat extends FrameLayout implements LogContainerProvider, Insett
         target.gridX = info.cellX;
         target.gridY = info.cellY;
         targetParent.containerType = ContainerType.HOTSEAT;
-    }
-
-    @Override
-    public void setInsets(Rect insets) {
-        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) getLayoutParams();
-        DeviceProfile grid = mLauncher.getDeviceProfile();
-
-        if (grid.isVerticalBarLayout()) {
-            lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
-            if (grid.isSeascape()) {
-                lp.gravity = Gravity.LEFT;
-                lp.width = grid.hotseatBarSizePx + insets.left + grid.hotseatBarSidePaddingPx;
-            } else {
-                lp.gravity = Gravity.RIGHT;
-                lp.width = grid.hotseatBarSizePx + insets.right + grid.hotseatBarSidePaddingPx;
-            }
-        } else {
-            lp.gravity = Gravity.BOTTOM;
-            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            lp.height = grid.hotseatBarSizePx + insets.bottom;
-        }
-        Rect padding = grid.getHotseatLayoutPadding();
-        getLayout().setPadding(padding.left, padding.top, padding.right, padding.bottom);
-
-        setLayoutParams(lp);
-        InsettableFrameLayout.dispatchInsets(this, insets);
     }
 }

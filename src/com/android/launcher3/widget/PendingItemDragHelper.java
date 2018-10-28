@@ -113,9 +113,7 @@ public class PendingItemDragHelper extends DragPreviewProvider {
         } else {
             PendingAddShortcutInfo createShortcutInfo = (PendingAddShortcutInfo) mAddInfo;
             Drawable icon = createShortcutInfo.activityInfo.getFullResIcon(app.getIconCache());
-            LauncherIcons li = LauncherIcons.obtain(launcher);
-            preview = li.createScaledBitmapWithoutShadow(icon, 0);
-            li.recycle();
+            preview = LauncherIcons.createScaledBitmapWithoutShadow(icon, launcher, 0);
             scale = ((float) launcher.getDeviceProfile().iconSizePx) / preview.getWidth();
 
             dragOffset = new Point(previewPadding / 2, previewPadding / 2);
@@ -149,7 +147,7 @@ public class PendingItemDragHelper extends DragPreviewProvider {
 
         // Start the drag
         launcher.getDragController().startDrag(preview, dragLayerX, dragLayerY, source, mAddInfo,
-                dragOffset, dragRegion, scale, scale, options);
+                dragOffset, dragRegion, scale, options);
     }
 
     @Override

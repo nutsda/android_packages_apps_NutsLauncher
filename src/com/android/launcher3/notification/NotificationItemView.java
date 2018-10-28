@@ -18,8 +18,8 @@ package com.android.launcher3.notification;
 
 import android.app.Notification;
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.Rect;
+import android.support.annotation.Nullable;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -82,7 +82,7 @@ public class NotificationItemView {
 
     public void addGutter() {
         if (mGutter == null) {
-            mGutter = mContainer.inflateAndAdd(R.layout.notification_gutter, mContainer);
+            mGutter = mContainer.inflateAndAdd(R.layout.notification_gutter);
         }
     }
 
@@ -114,12 +114,12 @@ public class NotificationItemView {
         }
     }
 
-    public void updateHeader(int notificationCount, int iconColor) {
+    public void updateHeader(int notificationCount, @Nullable IconPalette palette) {
         mHeaderCount.setText(notificationCount <= 1 ? "" : String.valueOf(notificationCount));
-        if (Color.alpha(iconColor) > 0) {
+        if (palette != null) {
             if (mNotificationHeaderTextColor == Notification.COLOR_DEFAULT) {
                 mNotificationHeaderTextColor =
-                        IconPalette.resolveContrastColor(mContext, iconColor,
+                        IconPalette.resolveContrastColor(mContext, palette.dominantColor,
                                 Themes.getAttrColor(mContext, R.attr.popupColorPrimary));
             }
             mHeaderText.setTextColor(mNotificationHeaderTextColor);

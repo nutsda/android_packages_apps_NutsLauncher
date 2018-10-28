@@ -46,7 +46,6 @@ import android.view.View;
 
 import com.android.launcher3.FastBitmapDrawable;
 import com.android.launcher3.ItemInfo;
-import com.android.launcher3.ItemInfoWithIcon;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherAnimUtils;
 import com.android.launcher3.LauncherAppState;
@@ -70,8 +69,6 @@ import com.android.launcher3.widget.PendingAddShortcutInfo;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.android.launcher3.ItemInfoWithIcon.FLAG_ICON_BADGED;
-
 public class DragView extends View {
     private static final ColorMatrix sTempMatrix1 = new ColorMatrix();
     private static final ColorMatrix sTempMatrix2 = new ColorMatrix();
@@ -89,7 +86,6 @@ public class DragView extends View {
     private final int mRegistrationX;
     private final int mRegistrationY;
     private final float mInitialScale;
-    private final float mScaleOnDrop;
     private final int[] mTempLoc = new int[2];
 
     private Point mDragVisualizeOffset = null;
@@ -132,7 +128,7 @@ public class DragView extends View {
      * @param registrationY The y coordinate of the registration point.
      */
     public DragView(Launcher launcher, Bitmap bitmap, int registrationX, int registrationY,
-                    final float initialScale, final float scaleOnDrop, final float finalScaleDps) {
+                    final float initialScale, final float finalScaleDps) {
         super(launcher);
         mLauncher = launcher;
         mDragLayer = launcher.getDragLayer();
@@ -181,7 +177,6 @@ public class DragView extends View {
         mRegistrationY = registrationY;
 
         mInitialScale = initialScale;
-        mScaleOnDrop = scaleOnDrop;
 
         // Force a measure, because Workspace uses getMeasuredHeight() before the layout pass
         int ms = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
@@ -229,10 +224,8 @@ public class DragView extends View {
                     mBadge = getBadge(info, appState, outObj[0]);
                     mBadge.setBounds(badgeBounds);
 
-                    LauncherIcons li = LauncherIcons.obtain(mLauncher);
                     Utilities.scaleRectAboutCenter(bounds,
-                            li.getNormalizer().getScale(dr, null, null, null));
-                    li.recycle();
+                            IconNormalizer.getInstance(mLauncher).getScale(dr, null, null, null));
                     AdaptiveIconDrawable adaptiveIcon = (AdaptiveIconDrawable) dr;
 
                     // Shrink very tiny bit so that the clip path is smaller than the original bitmap
@@ -272,7 +265,7 @@ public class DragView extends View {
                             mDrawBitmap = !(dr instanceof FolderAdaptiveIcon);
 
                             if (info.isDisabled()) {
-                                FastBitmapDrawable d = new FastBitmapDrawable((Bitmap) null);
+                                FastBitmapDrawable d = new FastBitmapDrawable(null);
                                 d.setIsDisabled(true);
                                 mBaseFilter = (ColorMatrixColorFilter) d.getColorFilter();
                             }
@@ -290,7 +283,7 @@ public class DragView extends View {
 
             if (mScaledMaskPath != null) {
                 mBgSpringDrawable.setColorFilter(mBaseFilter);
-                mFgSpringDrawable.setColorFilter(mBaseFilter);
+                mBgSpringDrawable.setColorFilter(mBaseFilter);
                 mBadge.setColorFilter(mBaseFilter);
             }
         } else {
@@ -369,17 +362,13 @@ public class DragView extends View {
     private Drawable getBadge(ItemInfo info, LauncherAppState appState, Object obj) {
         int iconSize = appState.getInvariantDeviceProfile().iconBitmapSize;
         if (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT) {
-            boolean iconBadged = (info instanceof ItemInfoWithIcon)
-                    && (((ItemInfoWithIcon) info).runtimeStatusFlags & FLAG_ICON_BADGED) > 0;
-            if ((info.id == ItemInfo.NO_ID && !iconBadged)
-                    || !(obj instanceof ShortcutInfoCompat)) {
+            if (info.id == ItemInfo.NO_ID || !(obj instanceof ShortcutInfoCompat)) {
                 // The item is not yet added on home screen.
                 return new FixedSizeEmptyDrawable(iconSize);
             }
             ShortcutInfoCompat si = (ShortcutInfoCompat) obj;
-            LauncherIcons li = LauncherIcons.obtain(appState.getContext());
-            Bitmap badge = li.getShortcutInfoBadge(si, appState.getIconCache()).iconBitmap;
-            li.recycle();
+            Bitmap badge = LauncherIcons.getShortcutInfoBadge(si, appState.getIconCache());
+
             float badgeSize = mLauncher.getResources().getDimension(R.dimen.profile_badge_size);
             float insetFraction = (iconSize - badgeSize) / iconSize;
             return new InsetDrawable(new FastBitmapDrawable(badge),
@@ -456,7 +445,7 @@ public class DragView extends View {
             canvas.drawBitmap(mBitmap, 0.0f, 0.0f, mPaint);
             if (crossFade) {
                 mPaint.setAlpha((int) (255 * mCrossFadeProgress));
-                final int saveCount = canvas.save();
+                final int saveCount = canvas.save(Canvas.MATRIX_SAVE_FLAG);
                 float sX = (mBitmap.getWidth() * 1.0f) / mCrossFadeBitmap.getWidth();
                 float sY = (mBitmap.getHeight() * 1.0f) / mCrossFadeBitmap.getHeight();
                 canvas.scale(sX, sY);
@@ -598,7 +587,7 @@ public class DragView extends View {
     public void animateTo(int toTouchX, int toTouchY, Runnable onCompleteRunnable, int duration) {
         mTempLoc[0] = toTouchX - mRegistrationX;
         mTempLoc[1] = toTouchY - mRegistrationY;
-        mDragLayer.animateViewIntoPosition(this, mTempLoc, 1f, mScaleOnDrop, mScaleOnDrop,
+        mDragLayer.animateViewIntoPosition(this, mTempLoc, 1f, mInitialScale, mInitialScale,
                 DragLayer.ANIMATION_END_DISAPPEAR, onCompleteRunnable, duration);
     }
 

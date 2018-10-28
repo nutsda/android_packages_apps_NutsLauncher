@@ -24,8 +24,7 @@ import android.view.View;
 import android.view.ViewPropertyAnimator;
 import android.view.ViewTreeObserver;
 import com.android.launcher3.util.Thunk;
-
-import static com.android.launcher3.Utilities.SINGLE_FRAME_MS;
+import com.android.launcher3.util.TraceHelper;
 
 /*
  *  This is a helper class that listens to updates from the corresponding animation.
@@ -37,6 +36,7 @@ public class FirstFrameAnimatorHelper extends AnimatorListenerAdapter
     private static final String TAG = "FirstFrameAnimatorHlpr";
     private static final boolean DEBUG = false;
     private static final int MAX_DELAY = 1000;
+    private static final int IDEAL_FRAME_DURATION = 16;
     private final View mTarget;
     private long mStartFrame;
     private long mStartTime = -1;
@@ -73,7 +73,13 @@ public class FirstFrameAnimatorHelper extends AnimatorListenerAdapter
             view.getViewTreeObserver().removeOnDrawListener(sGlobalDrawListener);
         }
 
-        sGlobalDrawListener = () -> sGlobalFrameCounter++;
+        TraceHelper.beginSection("TICK");
+        sGlobalDrawListener = new ViewTreeObserver.OnDrawListener() {
+                public void onDraw() {
+                    sGlobalFrameCounter++;
+                    TraceHelper.partitionSection("TICK", "Frame drawn");
+                }
+            };
         view.getViewTreeObserver().addOnDrawListener(sGlobalDrawListener);
         sVisible = true;
     }
@@ -109,9 +115,9 @@ public class FirstFrameAnimatorHelper extends AnimatorListenerAdapter
             // prevents a large jump in the animation due to an expensive first frame
             } else if (frameNum == 1 && currentTime < mStartTime + MAX_DELAY &&
                        !mAdjustedSecondFrameTime &&
-                       currentTime > mStartTime + SINGLE_FRAME_MS &&
-                       currentPlayTime > SINGLE_FRAME_MS) {
-                animation.setCurrentPlayTime(SINGLE_FRAME_MS);
+                       currentTime > mStartTime + IDEAL_FRAME_DURATION &&
+                       currentPlayTime > IDEAL_FRAME_DURATION) {
+                animation.setCurrentPlayTime(IDEAL_FRAME_DURATION);
                 mAdjustedSecondFrameTime = true;
             } else {
                 if (frameNum > 1) {

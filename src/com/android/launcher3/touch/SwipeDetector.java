@@ -150,7 +150,7 @@ public class SwipeDetector {
 
     private final PointF mDownPos = new PointF();
     private final PointF mLastPos = new PointF();
-    private Direction mDir;
+    private final Direction mDir;
 
     private final float mTouchSlop;
 
@@ -185,17 +185,9 @@ public class SwipeDetector {
         mDir = dir;
     }
 
-    public void updateDirection(Direction dir) {
-        mDir = dir;
-    }
-
     public void setDetectableScrollConditions(int scrollDirectionFlags, boolean ignoreSlop) {
         mScrollConditions = scrollDirectionFlags;
         mIgnoreSlopWhenSettling = ignoreSlop;
-    }
-
-    public int getScrollDirections() {
-        return mScrollConditions;
     }
 
     private boolean shouldScrollStart(MotionEvent ev, int pointerIndex) {
@@ -292,16 +284,6 @@ public class SwipeDetector {
         } else {
             mSubtractDisplacement = -mTouchSlop;
         }
-    }
-
-    /**
-     * Returns if the start drag was towards the positive direction or negative.
-     *
-     * @see #setDetectableScrollConditions(int, boolean)
-     * @see #DIRECTION_BOTH
-     */
-    public boolean wasInitialTouchPositive() {
-        return mSubtractDisplacement < 0;
     }
 
     private boolean reportDragging() {

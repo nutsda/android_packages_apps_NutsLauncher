@@ -17,7 +17,6 @@ import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.ShortcutInfo;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.compat.LauncherAppsCompat;
-import com.android.launcher3.graphics.BitmapInfo;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -139,8 +138,7 @@ public class LoaderCursorTest {
         assertTrue(mLoaderCursor.moveToNext());
 
         Bitmap icon = Bitmap.createBitmap(1, 1, Bitmap.Config.ALPHA_8);
-        when(mMockIconCache.getDefaultIcon(eq(mLoaderCursor.user)))
-                .thenReturn(BitmapInfo.fromBitmap(icon));
+        when(mMockIconCache.getDefaultIcon(eq(mLoaderCursor.user))).thenReturn(icon);
         ShortcutInfo info = mLoaderCursor.loadSimpleShortcut();
         assertEquals(icon, info.iconBitmap);
         assertEquals("my-shortcut", info.title);

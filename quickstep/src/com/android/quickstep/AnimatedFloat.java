@@ -46,9 +46,9 @@ public class AnimatedFloat {
         mUpdateCallback = updateCallback;
     }
 
-    public ObjectAnimator animateToValue(float start, float end) {
+    public ObjectAnimator animateToValue(float v) {
         cancelAnimation();
-        mValueAnimator = ObjectAnimator.ofFloat(this, VALUE, start, end);
+        mValueAnimator = ObjectAnimator.ofFloat(this, VALUE, v);
         mValueAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animator) {
@@ -74,12 +74,6 @@ public class AnimatedFloat {
     public void cancelAnimation() {
         if (mValueAnimator != null) {
             mValueAnimator.cancel();
-        }
-    }
-
-    public void finishAnimation() {
-        if (mValueAnimator != null && mValueAnimator.isRunning()) {
-            mValueAnimator.end();
         }
     }
 

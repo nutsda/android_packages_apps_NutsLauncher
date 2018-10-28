@@ -33,10 +33,6 @@ public class LooperExecutor extends AbstractExecutorService {
         mHandler = new Handler(looper);
     }
 
-    public Handler getHandler() {
-        return mHandler;
-    }
-
     @Override
     public void execute(Runnable runnable) {
         if (mHandler.getLooper() == Looper.myLooper()) {

@@ -129,15 +129,18 @@ public class PreviewBackground {
             };
 
     public void setup(Launcher launcher, View invalidateDelegate,
-                      int availableSpaceX, int topPadding) {
+                      int availableSpace, int topPadding) {
         mInvalidateDelegate = invalidateDelegate;
         mBgColor = Themes.getAttrColor(launcher, android.R.attr.colorPrimary);
 
         DeviceProfile grid = launcher.getDeviceProfile();
-        previewSize = grid.folderIconSizePx;
+        final int previewSize = grid.folderIconSizePx;
+        final int previewPadding = grid.folderIconPreviewPadding;
 
-        basePreviewOffsetX = (availableSpaceX - previewSize) / 2;
-        basePreviewOffsetY = topPadding + grid.folderIconOffsetYPx;
+        this.previewSize = (previewSize - 2 * previewPadding);
+
+        basePreviewOffsetX = (availableSpace - this.previewSize) / 2;
+        basePreviewOffsetY = previewPadding + grid.folderBackgroundOffset + topPadding;
 
         // Stroke width is 1dp
         mStrokeWidth = launcher.getResources().getDisplayMetrics().density;
@@ -197,10 +200,6 @@ public class PreviewBackground {
         return ColorUtils.setAlphaComponent(mBgColor, alpha);
     }
 
-    public int getBadgeColor() {
-        return mBgColor;
-    }
-
     public void drawBackground(Canvas canvas) {
         mPaint.setStyle(Paint.Style.FILL);
         mPaint.setColor(getBgColor());
@@ -224,10 +223,11 @@ public class PreviewBackground {
         final int saveCount;
         if (canvas.isHardwareAccelerated()) {
             saveCount = canvas.saveLayer(offsetX - mStrokeWidth, offsetY,
-                    offsetX + radius + shadowRadius, offsetY + shadowRadius + shadowRadius, null);
+                    offsetX + radius + shadowRadius, offsetY + shadowRadius + shadowRadius,
+                    null, Canvas.CLIP_TO_LAYER_SAVE_FLAG | Canvas.HAS_ALPHA_LAYER_SAVE_FLAG);
 
         } else {
-            saveCount = canvas.save();
+            saveCount = canvas.save(Canvas.CLIP_SAVE_FLAG);
             canvas.clipPath(getClipPath(), Region.Op.DIFFERENCE);
         }
 

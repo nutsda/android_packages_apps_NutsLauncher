@@ -40,7 +40,6 @@ import com.android.launcher3.Utilities;
 import com.android.launcher3.compat.LauncherAppsCompat;
 import com.android.launcher3.compat.UserManagerCompat;
 import com.android.launcher3.config.FeatureFlags;
-import com.android.launcher3.graphics.BitmapInfo;
 import com.android.launcher3.graphics.LauncherIcons;
 import com.android.launcher3.util.FlagOp;
 import com.android.launcher3.util.ItemInfoMatcher;
@@ -192,11 +191,9 @@ public class PackageUpdatedTask extends BaseModelUpdateTask {
                         // Update shortcuts which use iconResource.
                         if ((si.iconResource != null)
                                 && packageSet.contains(si.iconResource.packageName)) {
-                            LauncherIcons li = LauncherIcons.obtain(context);
-                            BitmapInfo iconInfo = li.createIconBitmap(si.iconResource);
-                            li.recycle();
-                            if (iconInfo != null) {
-                                iconInfo.applyTo(si);
+                            Bitmap icon = LauncherIcons.createIconBitmap(si.iconResource, context);
+                            if (icon != null) {
+                                si.iconBitmap = icon;
                                 infoUpdated = true;
                             }
                         }

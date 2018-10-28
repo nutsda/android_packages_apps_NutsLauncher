@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><!--
+<?xml version="1.0" encoding="utf-8"?>
+<!--
      Copyright (C) 2017 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,24 +14,23 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<com.android.quickstep.views.TaskView
+<com.android.quickstep.TaskView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:focusable="false"
-    android:elevation="4dp">
+    android:layout_height="match_parent">
 
-    <com.android.quickstep.views.TaskThumbnailView
+    <com.android.quickstep.TaskThumbnailView
         android:id="@+id/snapshot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="@dimen/task_thumbnail_top_margin" />
-
-    <com.android.quickstep.views.IconView
+        android:layout_marginTop="@dimen/task_thumbnail_top_margin"
+        android:scaleType="matrix"
+        android:background="@drawable/task_thumbnail_background"
+        android:elevation="4dp" />
+    <ImageView
         android:id="@+id/icon"
         android:layout_width="@dimen/task_thumbnail_icon_size"
         android:layout_height="@dimen/task_thumbnail_icon_size"
-        android:importantForAccessibility="no"
-        android:focusable="false"
-        android:layout_gravity="top|center_horizontal" />
-</com.android.quickstep.views.TaskView>
+        android:layout_gravity="top|center_horizontal"
+        android:elevation="5dp"/>
+</com.android.quickstep.TaskView>

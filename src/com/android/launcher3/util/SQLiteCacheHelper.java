@@ -92,10 +92,10 @@ public abstract class SQLiteCacheHelper {
     /**
      * A private inner class to prevent direct DB access.
      */
-    private class MySQLiteOpenHelper extends NoLocaleSQLiteHelper {
+    private class MySQLiteOpenHelper extends SQLiteOpenHelper {
 
         public MySQLiteOpenHelper(Context context, String name, int version) {
-            super(context, name, version);
+            super(new NoLocaleSqliteContext(context), name, null, version);
         }
 
         @Override

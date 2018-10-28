@@ -15,9 +15,6 @@
  */
 package com.android.launcher3.util;
 
-import static android.util.Log.VERBOSE;
-import static android.util.Log.isLoggable;
-
 import android.os.SystemClock;
 import android.os.Trace;
 import android.util.ArrayMap;
@@ -43,7 +40,7 @@ public class TraceHelper {
         if (ENABLED) {
             MutableLong time = sUpTimes.get(sectionName);
             if (time == null) {
-                time = new MutableLong(isLoggable(sectionName, VERBOSE) ? 0 : -1);
+                time = new MutableLong(Log.isLoggable(sectionName, Log.VERBOSE) ? 0 : -1);
                 sUpTimes.put(sectionName, time);
             }
             if (time.value >= 0) {
@@ -58,7 +55,7 @@ public class TraceHelper {
     public static void partitionSection(String sectionName, String partition) {
         if (ENABLED) {
             MutableLong time = sUpTimes.get(sectionName);
-            if (time != null && time.value >= 0) {
+            if (time.value >= 0) {
 
                 if (SYSTEM_TRACE) {
                     Trace.endSection();
@@ -81,7 +78,7 @@ public class TraceHelper {
     public static void endSection(String sectionName, String msg) {
         if (ENABLED) {
             MutableLong time = sUpTimes.get(sectionName);
-            if (time != null && time.value >= 0) {
+            if (time.value >= 0) {
                 if (SYSTEM_TRACE) {
                     Trace.endSection();
                 }

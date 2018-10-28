@@ -18,6 +18,7 @@ package com.android.launcher3;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -36,6 +37,7 @@ public interface LauncherCallbacks {
      * Activity life-cycle methods. These methods are triggered after
      * the code in the corresponding Launcher method is executed.
      */
+    void preOnCreate();
     void onCreate(Bundle savedInstanceState);
     void onResume();
     void onStart();
@@ -49,7 +51,7 @@ public interface LauncherCallbacks {
     void onAttachedToWindow();
     void onDetachedFromWindow();
     void dump(String prefix, FileDescriptor fd, PrintWriter w, String[] args);
-    void onHomeIntent(boolean internalStateHandled);
+    void onHomeIntent();
     boolean handleBackPressed();
     void onTrimMemory(int level);
 

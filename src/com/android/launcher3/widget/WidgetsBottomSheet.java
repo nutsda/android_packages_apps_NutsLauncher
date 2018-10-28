@@ -20,7 +20,6 @@ import android.animation.PropertyValuesHolder;
 import android.content.Context;
 import android.graphics.Rect;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,6 +32,7 @@ import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.anim.Interpolators;
+import com.android.launcher3.graphics.GradientView;
 import com.android.launcher3.model.WidgetItem;
 import com.android.launcher3.util.PackageUserKey;
 
@@ -55,6 +55,10 @@ public class WidgetsBottomSheet extends BaseWidgetSheet implements Insettable {
         super(context, attrs, defStyleAttr);
         setWillNotDraw(false);
         mInsets = new Rect();
+
+        mGradientView = (GradientView) mLauncher.getLayoutInflater().inflate(
+                R.layout.widgets_bottom_sheet_scrim, mLauncher.getDragLayer(), false);
+        mGradientView.setProgress(1, false);
         mContent = this;
     }
 
@@ -71,9 +75,10 @@ public class WidgetsBottomSheet extends BaseWidgetSheet implements Insettable {
 
         onWidgetsBound();
 
+        mLauncher.getDragLayer().addView(mGradientView);
         mLauncher.getDragLayer().addView(this);
         mIsOpen = false;
-        animateOpen();
+        open(true);
     }
 
     @Override
@@ -130,21 +135,31 @@ public class WidgetsBottomSheet extends BaseWidgetSheet implements Insettable {
         return widget;
     }
 
-    private void animateOpen() {
+    private void open(boolean animate) {
         if (mIsOpen || mOpenCloseAnimator.isRunning()) {
             return;
         }
         mIsOpen = true;
         setupNavBarColor();
-        mOpenCloseAnimator.setValues(
-                PropertyValuesHolder.ofFloat(TRANSLATION_SHIFT, TRANSLATION_SHIFT_OPENED));
-        mOpenCloseAnimator.setInterpolator(Interpolators.FAST_OUT_SLOW_IN);
-        mOpenCloseAnimator.start();
+        if (animate) {
+            mOpenCloseAnimator.setValues(
+                    PropertyValuesHolder.ofFloat(TRANSLATION_SHIFT, TRANSLATION_SHIFT_OPENED));
+            mOpenCloseAnimator.setInterpolator(Interpolators.FAST_OUT_SLOW_IN);
+            mOpenCloseAnimator.start();
+        } else {
+            setTranslationShift(TRANSLATION_SHIFT_OPENED);
+        }
     }
 
     @Override
     protected void handleClose(boolean animate) {
         handleClose(animate, DEFAULT_CLOSE_DURATION);
+    }
+
+    @Override
+    protected void onCloseComplete() {
+        super.onCloseComplete();
+        mLauncher.getDragLayer().removeView(mGradientView);
     }
 
     @Override
@@ -166,11 +181,5 @@ public class WidgetsBottomSheet extends BaseWidgetSheet implements Insettable {
     @Override
     protected int getElementsRowCount() {
         return 1;
-    }
-
-    @Override
-    protected Pair<View, String> getAccessibilityTarget() {
-        return Pair.create(findViewById(R.id.title),  getContext().getString(
-                mIsOpen ? R.string.widgets_list : R.string.widgets_list_closed));
     }
 }

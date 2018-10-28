@@ -16,50 +16,44 @@
 
 package com.android.launcher3.uioverrides;
 
-import android.app.Activity;
-import android.content.Context;
-import android.os.CancellationSignal;
+import static com.android.launcher3.LauncherState.OVERVIEW;
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.view.View.AccessibilityDelegate;
 
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherStateManager.StateHandler;
+import com.android.launcher3.graphics.BitmapRenderer;
 import com.android.launcher3.util.TouchController;
-
-import java.io.PrintWriter;
 
 public class UiFactory {
 
+    public static final boolean USE_HARDWARE_BITMAP = false;
+
     public static TouchController[] createTouchControllers(Launcher launcher) {
         return new TouchController[] {
-                launcher.getDragController(), new AllAppsSwipeController(launcher)};
+                new AllAppsSwipeController(launcher), new PinchToOverviewListener(launcher)};
     }
 
-    public static void setOnTouchControllersChangedListener(Context context, Runnable listener) { }
+    public static AccessibilityDelegate newPageIndicatorAccessibilityDelegate() {
+        return new OverviewAccessibilityDelegate();
+    }
 
     public static StateHandler[] getStateHandler(Launcher launcher) {
         return new StateHandler[] {
+                (OverviewPanel) launcher.getOverviewPanel(),
                 launcher.getAllAppsController(), launcher.getWorkspace() };
     }
 
-    public static void resetOverview(Launcher launcher) { }
-
-    public static void onLauncherStateOrFocusChanged(Launcher launcher) { }
-
-    public static void onCreate(Launcher launcher) { }
-
-    public static void onStart(Launcher launcher) { }
-
-    public static void onLauncherStateOrResumeChanged(Launcher launcher) { }
-
-    public static void onTrimMemory(Launcher launcher, int level) { }
-
-    public static void useFadeOutAnimationForLauncherStart(Launcher launcher,
-            CancellationSignal cancellationSignal) { }
-
-    public static boolean dumpActivity(Activity activity, PrintWriter writer) {
-        return false;
+    public static void onWorkspaceLongPress(Launcher launcher) {
+        launcher.getStateManager().goToState(OVERVIEW);
     }
 
-    public static void prepareToShowOverview(Launcher launcher) { }
-
-    public static void setBackButtonAlpha(Launcher launcher, float alpha, boolean animate) { }
+    public static Bitmap createFromRenderer(int width, int height, boolean forceSoftwareRenderer,
+            BitmapRenderer renderer) {
+        Bitmap result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        renderer.render(new Canvas(result));
+        return result;
+    }
 }

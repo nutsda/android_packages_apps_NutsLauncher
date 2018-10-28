@@ -34,14 +34,15 @@
         android:title="@string/auto_add_shortcuts_label"
         android:summary="@string/auto_add_shortcuts_description"
         android:defaultValue="true"
-        android:persistent="true" />
+        android:persistent="true"
+        />
 
     <SwitchPreference
         android:key="pref_allowRotation"
         android:title="@string/allow_rotation_title"
-        android:summary="@string/allow_rotation_desc"
         android:defaultValue="@bool/allow_rotation"
-        android:persistent="true" />
+        android:persistent="true"
+        />
 
     <ListPreference
         android:key="pref_override_icon_shape"
@@ -52,44 +53,4 @@
         android:defaultValue=""
         android:persistent="false" />
 
-    <ListPreference
-        android:key="pref_theme_style"
-        android:title="@string/theme_style_title"
-        android:persistent="true"
-        android:entries="@array/theme_style_entries"
-        android:entryValues="@array/theme_style_values"
-        android:defaultValue="0" />
-
-    <PreferenceCategory
-        android:key="grid_category"
-        android:title="@string/grid_category_title">
-
-    <ListPreference
-        android:key="pref_grid_columns"
-        android:title="@string/number_of_columns_title"
-        android:summary="%s"
-        android:entries="@array/grid_names"
-        android:entryValues="@array/grid_values"
-        android:defaultValue="-1"
-        android:persistent="true" />
- 
-    <ListPreference
-        android:key="pref_grid_rows"
-        android:title="@string/number_of_rows_title"
-        android:summary="%s"
-        android:entries="@array/grid_names"
-        android:entryValues="@array/grid_values"
-        android:defaultValue="-1"
-        android:persistent="true" />
-
- 
-    <ListPreference
-        android:key="pref_hotseat_icons"
-        android:title="@string/number_of_hotseat_title"
-        android:summary="%s"
-        android:entries="@array/grid_names"
-        android:entryValues="@array/grid_values"
-        android:defaultValue="-1"
-        android:persistent="true" />
-     </PreferenceCategory>
 </PreferenceScreen>

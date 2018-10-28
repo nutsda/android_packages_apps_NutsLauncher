@@ -28,15 +28,13 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.DeadObjectException;
-import android.os.Handler;
-import android.os.Message;
 import android.os.PowerManager;
 import android.os.TransactionTooLargeException;
 import android.text.Spannable;
@@ -46,6 +44,7 @@ import android.text.style.TtsSpan;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.View;
 
@@ -82,9 +81,6 @@ public final class Utilities {
     private static final Matrix sMatrix = new Matrix();
     private static final Matrix sInverseMatrix = new Matrix();
 
-    public static final boolean ATLEAST_P =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P;
-
     public static final boolean ATLEAST_OREO_MR1 =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1;
 
@@ -103,14 +99,11 @@ public final class Utilities {
     public static final boolean ATLEAST_LOLLIPOP_MR1 =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1;
 
-    public static final int SINGLE_FRAME_MS = 16;
-
     /**
      * Indicates if the device has a debug build. Should only be used to store additional info or
      * add extra logging and not for changing the app behavior.
      */
-    public static final boolean IS_DEBUG_DEVICE = Build.TYPE.toLowerCase().contains("debug")
-            || Build.TYPE.toLowerCase().equals("eng");
+    public static final boolean IS_DEBUG_DEVICE = Build.TYPE.toLowerCase().contains("debug");
 
     // An intent extra to indicate the horizontal scroll of the wallpaper.
     public static final String EXTRA_WALLPAPER_OFFSET = "com.android.launcher3.WALLPAPER_OFFSET";
@@ -129,38 +122,28 @@ public final class Utilities {
     public static final Executor THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(
             CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE,
             TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-    public static final String GRID_COLUMNS = "pref_grid_columns";
-    public static final String GRID_ROWS = "pref_grid_rows";
-    public static final String HOTSEAT_ICONS = "pref_hotseat_icons";
+
+    public static final String ALLOW_ROTATION_PREFERENCE_KEY = "pref_allowRotation";
 
     public static boolean isPropertyEnabled(String propertyName) {
         return Log.isLoggable(propertyName, Log.VERBOSE);
     }
 
-
-    public static int getGridColumns(Context context, int fallback) {
-        return getIconCount(context, GRID_COLUMNS, fallback);
+    public static boolean isAllowRotationPrefEnabled(Context context) {
+        return getPrefs(context).getBoolean(ALLOW_ROTATION_PREFERENCE_KEY,
+                getAllowRotationDefaultValue(context));
     }
 
-    public static int getGridRows(Context context, int fallback) {
-        return getIconCount(context, GRID_ROWS, fallback);
-    }
-
-    public static int getHotseatIcons(Context context, int fallback) {
-        return getIconCount(context, HOTSEAT_ICONS, fallback);
-    }
-
-    private static int getIconCount(Context context, String preferenceName, int preferenceFallback) {
-        String saved = getPrefs(context).getString(preferenceName, "-1");
-        try {
-            int num = Integer.valueOf(saved);
-            if (num == -1) {
-                return preferenceFallback;
-            }
-            return num;
-        } catch (Exception e) {
-            return preferenceFallback;
+    public static boolean getAllowRotationDefaultValue(Context context) {
+        if (ATLEAST_NOUGAT) {
+            // If the device was scaled, used the original dimensions to determine if rotation
+            // is allowed of not.
+            Resources res = context.getResources();
+            int originalSmallestWidth = res.getConfiguration().smallestScreenWidthDp
+                    * res.getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEVICE_STABLE;
+            return originalSmallestWidth >= 600;
         }
+        return false;
     }
 
     /**
@@ -248,43 +231,19 @@ public final class Utilities {
         return new int[] {sLoc1[0] - sLoc0[0], sLoc1[1] - sLoc0[1]};
     }
 
-    public static void scaleRectFAboutCenter(RectF r, float scale) {
-        if (scale != 1.0f) {
-            float cx = r.centerX();
-            float cy = r.centerY();
-            r.offset(-cx, -cy);
-            r.left = r.left * scale;
-            r.top = r.top * scale ;
-            r.right = r.right * scale;
-            r.bottom = r.bottom * scale;
-            r.offset(cx, cy);
-        }
-    }
-
     public static void scaleRectAboutCenter(Rect r, float scale) {
         if (scale != 1.0f) {
             int cx = r.centerX();
             int cy = r.centerY();
             r.offset(-cx, -cy);
-            scaleRect(r, scale);
-            r.offset(cx, cy);
-        }
-    }
 
-    public static void scaleRect(Rect r, float scale) {
-        if (scale != 1.0f) {
             r.left = (int) (r.left * scale + 0.5f);
             r.top = (int) (r.top * scale + 0.5f);
             r.right = (int) (r.right * scale + 0.5f);
             r.bottom = (int) (r.bottom * scale + 0.5f);
-        }
-    }
 
-    public static void insetRect(Rect r, Rect insets) {
-        r.left = Math.min(r.right, r.left + insets.left);
-        r.top = Math.min(r.bottom, r.top + insets.top);
-        r.right = Math.max(r.left, r.right - insets.right);
-        r.bottom = Math.max(r.top, r.bottom - insets.bottom);
+            r.offset(cx, cy);
+        }
     }
 
     public static float shrinkRect(Rect r, float scaleX, float scaleY) {
@@ -299,10 +258,6 @@ public final class Utilities {
             r.bottom -= deltaY;
         }
         return scale;
-    }
-
-    public static float mapRange(float value, float min, float max) {
-        return min + (value * (max - min));
     }
 
     public static boolean isSystemApp(Context context, Intent intent) {
@@ -328,6 +283,89 @@ public final class Utilities {
         } else {
             return false;
         }
+    }
+
+    /**
+     * This picks a dominant color, looking for high-saturation, high-value, repeated hues.
+     * @param bitmap The bitmap to scan
+     * @param samples The approximate max number of samples to use.
+     */
+    public static int findDominantColorByHue(Bitmap bitmap, int samples) {
+        final int height = bitmap.getHeight();
+        final int width = bitmap.getWidth();
+        int sampleStride = (int) Math.sqrt((height * width) / samples);
+        if (sampleStride < 1) {
+            sampleStride = 1;
+        }
+
+        // This is an out-param, for getting the hsv values for an rgb
+        float[] hsv = new float[3];
+
+        // First get the best hue, by creating a histogram over 360 hue buckets,
+        // where each pixel contributes a score weighted by saturation, value, and alpha.
+        float[] hueScoreHistogram = new float[360];
+        float highScore = -1;
+        int bestHue = -1;
+
+        int[] pixels = new int[samples];
+        int pixelCount = 0;
+
+        for (int y = 0; y < height; y += sampleStride) {
+            for (int x = 0; x < width; x += sampleStride) {
+                int argb = bitmap.getPixel(x, y);
+                int alpha = 0xFF & (argb >> 24);
+                if (alpha < 0x80) {
+                    // Drop mostly-transparent pixels.
+                    continue;
+                }
+                // Remove the alpha channel.
+                int rgb = argb | 0xFF000000;
+                Color.colorToHSV(rgb, hsv);
+                // Bucket colors by the 360 integer hues.
+                int hue = (int) hsv[0];
+                if (hue < 0 || hue >= hueScoreHistogram.length) {
+                    // Defensively avoid array bounds violations.
+                    continue;
+                }
+                if (pixelCount < samples) {
+                    pixels[pixelCount++] = rgb;
+                }
+                float score = hsv[1] * hsv[2];
+                hueScoreHistogram[hue] += score;
+                if (hueScoreHistogram[hue] > highScore) {
+                    highScore = hueScoreHistogram[hue];
+                    bestHue = hue;
+                }
+            }
+        }
+
+        SparseArray<Float> rgbScores = new SparseArray<>();
+        int bestColor = 0xff000000;
+        highScore = -1;
+        // Go back over the RGB colors that match the winning hue,
+        // creating a histogram of weighted s*v scores, for up to 100*100 [s,v] buckets.
+        // The highest-scoring RGB color wins.
+        for (int i = 0; i < pixelCount; i++) {
+            int rgb = pixels[i];
+            Color.colorToHSV(rgb, hsv);
+            int hue = (int) hsv[0];
+            if (hue == bestHue) {
+                float s = hsv[1];
+                float v = hsv[2];
+                int bucket = (int) (s * 100) + (int) (v * 10000);
+                // Score by cumulative saturation * value.
+                float score = s * v;
+                Float oldTotal = rgbScores.get(bucket);
+                float newTotal = oldTotal == null ? score : oldTotal + score;
+                rgbScores.put(bucket, newTotal);
+                if (newTotal > highScore) {
+                    highScore = newTotal;
+                    // All the colors in the winning bucket are very similar. Last in wins.
+                    bestColor = rgb;
+                }
+            }
+        }
+        return bestColor;
     }
 
     /*
@@ -521,11 +559,7 @@ public final class Utilities {
                 LauncherFiles.DEVICE_PREFERENCES_KEY, Context.MODE_PRIVATE);
     }
 
-    public static boolean isPowerSaverPreventingAnimation(Context context) {
-        if (ATLEAST_P) {
-            // Battery saver mode no longer prevents animations.
-            return false;
-        }
+    public static boolean isPowerSaverOn(Context context) {
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         return powerManager.isPowerSaveMode();
     }
@@ -612,12 +646,4 @@ public final class Utilities {
         return hashSet;
     }
 
-    /**
-     * Utility method to post a runnable on the handler, skipping the synchronization barriers.
-     */
-    public static void postAsyncCallback(Handler handler, Runnable callback) {
-        Message msg = Message.obtain(handler, callback);
-        msg.setAsynchronous(true);
-        handler.sendMessage(msg);
-    }
 }

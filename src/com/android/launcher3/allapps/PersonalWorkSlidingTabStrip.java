@@ -16,7 +16,6 @@
 package com.android.launcher3.allapps;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.support.annotation.NonNull;
@@ -26,33 +25,24 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
-import com.android.launcher3.pageindicators.PageIndicator;
 import com.android.launcher3.util.Themes;
 
 /**
  * Supports two indicator colors, dedicated for personal and work tabs.
  */
-public class PersonalWorkSlidingTabStrip extends LinearLayout implements PageIndicator {
-    private static final int POSITION_PERSONAL = 0;
-    private static final int POSITION_WORK = 1;
-
-    private static final String KEY_SHOWED_PEEK_WORK_TAB = "showed_peek_work_tab";
-
-    private final Paint mSelectedIndicatorPaint;
+public class PersonalWorkSlidingTabStrip extends LinearLayout {
+    private final Paint mPersonalTabIndicatorPaint;
+    private final Paint mWorkTabIndicatorPaint;
     private final Paint mDividerPaint;
-    private final SharedPreferences mSharedPreferences;
 
     private int mSelectedIndicatorHeight;
     private int mIndicatorLeft = -1;
     private int mIndicatorRight = -1;
-    private float mScrollOffset;
+    private int mIndicatorPosition = 0;
+    private float mIndicatorOffset;
     private int mSelectedPosition = 0;
-
-    private AllAppsContainerView mContainerView;
-    private int mLastActivePage = 0;
     private boolean mIsRtl;
 
     public PersonalWorkSlidingTabStrip(@NonNull Context context, @Nullable AttributeSet attrs) {
@@ -63,25 +53,27 @@ public class PersonalWorkSlidingTabStrip extends LinearLayout implements PageInd
         mSelectedIndicatorHeight =
                 getResources().getDimensionPixelSize(R.dimen.all_apps_tabs_indicator_height);
 
-        mSelectedIndicatorPaint = new Paint();
-        mSelectedIndicatorPaint.setColor(
+        mPersonalTabIndicatorPaint = new Paint();
+        mPersonalTabIndicatorPaint.setColor(
                 Themes.getAttrColor(context, android.R.attr.colorAccent));
+
+        mWorkTabIndicatorPaint = new Paint();
+        mWorkTabIndicatorPaint.setColor(getResources().getColor(R.color.work_profile_color));
+
+        mIsRtl = Utilities.isRtl(getResources());
 
         mDividerPaint = new Paint();
         mDividerPaint.setColor(Themes.getAttrColor(context, android.R.attr.colorControlHighlight));
-        mDividerPaint.setStrokeWidth(
-                getResources().getDimensionPixelSize(R.dimen.all_apps_divider_height));
-
-        mSharedPreferences = Launcher.getLauncher(getContext()).getSharedPrefs();
-        mIsRtl = Utilities.isRtl(getResources());
+        mDividerPaint.setStrokeWidth(getResources().getDimensionPixelSize(R.dimen.all_apps_divider_height));
     }
 
-    private void updateIndicatorPosition(float scrollOffset) {
-        mScrollOffset = scrollOffset;
+    public void updateIndicatorPosition(int position, float positionOffset) {
+        mIndicatorPosition = position;
+        mIndicatorOffset = positionOffset;
         updateIndicatorPosition();
     }
 
-    private void updateTabTextColor(int pos) {
+    public void updateTabTextColor(int pos) {
         mSelectedPosition = pos;
         for (int i = 0; i < getChildCount(); i++) {
             Button tab = (Button) getChildAt(i);
@@ -93,21 +85,30 @@ public class PersonalWorkSlidingTabStrip extends LinearLayout implements PageInd
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
         updateTabTextColor(mSelectedPosition);
-        updateIndicatorPosition(mScrollOffset);
+        updateIndicatorPosition(mIndicatorPosition, mIndicatorOffset);
     }
 
     private void updateIndicatorPosition() {
-        int left = -1, right = -1;
-        final View leftTab = getLeftTab();
-        if (leftTab != null) {
-            left = (int) (leftTab.getLeft() + leftTab.getWidth() * mScrollOffset);
-            right = left + leftTab.getWidth();
-        }
-        setIndicatorPosition(left, right);
-    }
+        final View tab = getChildAt(mIndicatorPosition);
+        int left, right;
 
-    private View getLeftTab() {
-        return mIsRtl ? getChildAt(1) : getChildAt(0);
+        if (tab != null && tab.getWidth() > 0) {
+            left = tab.getLeft();
+            right = tab.getRight();
+
+            if (mIndicatorOffset > 0f && mIndicatorPosition < getChildCount() - 1) {
+                // Draw the selection partway between the tabs
+                View nextTitle = getChildAt(mIndicatorPosition + 1);
+                left = (int) (mIndicatorOffset * nextTitle.getLeft() +
+                        (1.0f - mIndicatorOffset) * left);
+                right = (int) (mIndicatorOffset * nextTitle.getRight() +
+                        (1.0f - mIndicatorOffset) * right);
+            }
+        } else {
+            left = right = -1;
+        }
+
+        setIndicatorPosition(left, right);
     }
 
     private void setIndicatorPosition(int left, int right) {
@@ -124,53 +125,20 @@ public class PersonalWorkSlidingTabStrip extends LinearLayout implements PageInd
 
         float y = getHeight() - mDividerPaint.getStrokeWidth();
         canvas.drawLine(getPaddingLeft(), y, getWidth() - getPaddingRight(), y, mDividerPaint);
-        canvas.drawRect(mIndicatorLeft, getHeight() - mSelectedIndicatorHeight,
-            mIndicatorRight, getHeight(), mSelectedIndicatorPaint);
-    }
 
-    public void highlightWorkTabIfNecessary() {
-        if (mSharedPreferences.getBoolean(KEY_SHOWED_PEEK_WORK_TAB, false)) {
-            return;
+        final float middleX = getWidth() / 2.0f;
+        if (mIndicatorLeft <= middleX) {
+            canvas.drawRect(mIndicatorLeft, getHeight() - mSelectedIndicatorHeight,
+                    middleX, getHeight(), getPaint(true /* firstHalf */));
         }
-        if (mLastActivePage != POSITION_PERSONAL) {
-            return;
+        if (mIndicatorRight > middleX) {
+            canvas.drawRect(middleX, getHeight() - mSelectedIndicatorHeight,
+                    mIndicatorRight, getHeight(), getPaint(false /* firstHalf */));
         }
-        highlightWorkTab();
-        mSharedPreferences.edit().putBoolean(KEY_SHOWED_PEEK_WORK_TAB, true).apply();
     }
 
-    private void highlightWorkTab() {
-        View v = getChildAt(POSITION_WORK);
-        v.post(() -> {
-            v.setPressed(true);
-            v.setPressed(false);
-        });
-    }
-
-    @Override
-    public void setScroll(int currentScroll, int totalScroll) {
-        float scrollOffset = ((float) currentScroll) / totalScroll;
-        updateIndicatorPosition(scrollOffset);
-    }
-
-    @Override
-    public void setActiveMarker(int activePage) {
-        updateTabTextColor(activePage);
-        if (mContainerView != null && mLastActivePage != activePage) {
-            mContainerView.onTabChanged(activePage);
-        }
-        mLastActivePage = activePage;
-    }
-
-    public void setContainerView(AllAppsContainerView containerView) {
-        mContainerView = containerView;
-    }
-
-    @Override
-    public void setMarkersCount(int numMarkers) { }
-
-    @Override
-    public boolean hasOverlappingRendering() {
-        return false;
+    private Paint getPaint(boolean firstHalf) {
+        boolean isPersonal = mIsRtl ^ firstHalf;
+        return isPersonal ? mPersonalTabIndicatorPaint : mWorkTabIndicatorPaint;
     }
 }

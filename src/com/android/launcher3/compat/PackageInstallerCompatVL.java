@@ -59,13 +59,13 @@ public class PackageInstallerCompatVL extends PackageInstallerCompat {
     }
 
     @Override
-    public HashMap<String, SessionInfo> updateAndGetActiveSessionCache() {
-        HashMap<String, SessionInfo> activePackages = new HashMap<>();
+    public HashMap<String, Integer> updateAndGetActiveSessionCache() {
+        HashMap<String, Integer> activePackages = new HashMap<>();
         UserHandle user = Process.myUserHandle();
         for (SessionInfo info : getAllVerifiedSessions()) {
             addSessionInfoToCache(info, user);
             if (info.getAppPackageName() != null) {
-                activePackages.put(info.getAppPackageName(), info);
+                activePackages.put(info.getAppPackageName(), (int) (info.getProgress() * 100));
                 mActiveSessions.put(info.getSessionId(), info.getAppPackageName());
             }
         }

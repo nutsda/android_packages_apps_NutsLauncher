@@ -16,12 +16,15 @@
 package com.android.launcher3.uioverrides;
 
 import static com.android.launcher3.LauncherAnimUtils.ALL_APPS_TRANSITION_MS;
+import static com.android.launcher3.allapps.DiscoveryBounce.APPS_VIEW_SHOWN;
 import static com.android.launcher3.anim.Interpolators.DEACCEL_2;
+
+import android.view.View;
 
 import com.android.launcher3.AbstractFloatingView;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherState;
-import com.android.launcher3.allapps.AllAppsContainerView;
+import com.android.launcher3.R;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
 
 /**
@@ -39,51 +42,37 @@ public class AllAppsState extends LauncherState {
     };
 
     public AllAppsState(int id) {
-        super(id, ContainerType.ALLAPPS, ALL_APPS_TRANSITION_MS, STATE_FLAGS);
+        super(id, ContainerType.ALLAPPS, ALL_APPS_TRANSITION_MS, 0f, STATE_FLAGS);
     }
 
     @Override
     public void onStateEnabled(Launcher launcher) {
+        if (!launcher.getSharedPrefs().getBoolean(APPS_VIEW_SHOWN, false)) {
+            launcher.getSharedPrefs().edit().putBoolean(APPS_VIEW_SHOWN, true).apply();
+        }
+
         AbstractFloatingView.closeAllOpenViews(launcher);
         dispatchWindowStateChanged(launcher);
     }
 
     @Override
     public String getDescription(Launcher launcher) {
-        AllAppsContainerView appsView = launcher.getAppsView();
-        return appsView.getDescription();
+        return launcher.getString(R.string.all_apps_button_label);
     }
 
     @Override
-    public float getVerticalProgress(Launcher launcher) {
-        return 0f;
+    public View getFinalFocus(Launcher launcher) {
+        return launcher.getAppsView();
     }
 
     @Override
     public float[] getWorkspaceScaleAndTranslation(Launcher launcher) {
-        float[] scaleAndTranslation = LauncherState.OVERVIEW.getWorkspaceScaleAndTranslation(
-                launcher);
-        scaleAndTranslation[0] = 1;
-        return scaleAndTranslation;
+        // TODO: interpolate
+        return LauncherState.OVERVIEW.getWorkspaceScaleAndTranslation(launcher);
     }
 
     @Override
     public PageAlphaProvider getWorkspacePageAlphaProvider(Launcher launcher) {
         return PAGE_ALPHA_PROVIDER;
-    }
-
-    @Override
-    public int getVisibleElements(Launcher launcher) {
-        return ALL_APPS_HEADER | ALL_APPS_HEADER_EXTRA | ALL_APPS_CONTENT;
-    }
-
-    @Override
-    public float[] getOverviewScaleAndTranslationYFactor(Launcher launcher) {
-        return new float[] {0.9f, -0.2f};
-    }
-
-    @Override
-    public LauncherState getHistoryForState(LauncherState previousState) {
-        return previousState == OVERVIEW ? OVERVIEW : NORMAL;
     }
 }

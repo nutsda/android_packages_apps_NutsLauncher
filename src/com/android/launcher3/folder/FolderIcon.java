@@ -63,7 +63,7 @@ import com.android.launcher3.badge.FolderBadgeInfo;
 import com.android.launcher3.dragndrop.BaseItemDragListener;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.dragndrop.DragView;
-import com.android.launcher3.touch.ItemClickHandler;
+import com.android.launcher3.graphics.IconPalette;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.widget.PendingAddShortcutInfo;
 
@@ -160,14 +160,14 @@ public class FolderIcon extends FrameLayout implements FolderListener {
                 .inflate(resId, group, false);
 
         icon.setClipToPadding(false);
-        icon.mFolderName = icon.findViewById(R.id.folder_icon_name);
+        icon.mFolderName = (BubbleTextView) icon.findViewById(R.id.folder_icon_name);
         icon.mFolderName.setText(folderInfo.title);
         icon.mFolderName.setCompoundDrawablePadding(0);
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) icon.mFolderName.getLayoutParams();
         lp.topMargin = grid.iconSizePx + grid.iconDrawablePaddingPx;
 
         icon.setTag(folderInfo);
-        icon.setOnClickListener(ItemClickHandler.INSTANCE);
+        icon.setOnClickListener(launcher);
         icon.mInfo = folderInfo;
         icon.mLauncher = launcher;
         icon.mBadgeRenderer = launcher.getDeviceProfile().mBadgeRenderer;
@@ -206,7 +206,7 @@ public class FolderIcon extends FrameLayout implements FolderListener {
         return ((itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION ||
                 itemType == LauncherSettings.Favorites.ITEM_TYPE_SHORTCUT ||
                 itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT) &&
-                item != mInfo && !mFolder.isOpen());
+                !mFolder.isFull() && item != mInfo && !mFolder.isOpen());
     }
 
     public boolean acceptDrop(ItemInfo dragInfo) {
@@ -468,10 +468,11 @@ public class FolderIcon extends FrameLayout implements FolderListener {
         final int saveCount;
 
         if (canvas.isHardwareAccelerated()) {
-            saveCount = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
+            saveCount = canvas.saveLayer(0, 0, getWidth(), getHeight(), null,
+                    Canvas.HAS_ALPHA_LAYER_SAVE_FLAG | Canvas.CLIP_TO_LAYER_SAVE_FLAG);
         } else {
-            saveCount = canvas.save();
-            canvas.clipPath(mBackground.getClipPath());
+            saveCount = canvas.save(Canvas.CLIP_SAVE_FLAG);
+            canvas.clipPath(mBackground.getClipPath(), Region.Op.INTERSECT);
         }
 
         mPreviewItemManager.draw(canvas);
@@ -498,7 +499,8 @@ public class FolderIcon extends FrameLayout implements FolderListener {
             // If we are animating to the accepting state, animate the badge out.
             float badgeScale = Math.max(0, mBadgeScale - mBackground.getScaleProgress());
             mTempSpaceForBadgeOffset.set(getWidth() - mTempBounds.right, mTempBounds.top);
-            mBadgeRenderer.draw(canvas, mBackground.getBadgeColor(), mTempBounds,
+            IconPalette badgePalette = IconPalette.getFolderBadgePalette(getResources());
+            mBadgeRenderer.draw(canvas, badgePalette, mBadgeInfo, mTempBounds,
                     badgeScale, mTempSpaceForBadgeOffset);
         }
     }
@@ -568,7 +570,7 @@ public class FolderIcon extends FrameLayout implements FolderListener {
     @Override
     public void onAdd(ShortcutInfo item, int rank) {
         boolean wasBadged = mBadgeInfo.hasBadge();
-        mBadgeInfo.addBadgeInfo(mLauncher.getBadgeInfoForItem(item));
+        mBadgeInfo.addBadgeInfo(mLauncher.getPopupDataProvider().getBadgeInfoForItem(item));
         boolean isBadged = mBadgeInfo.hasBadge();
         updateBadgeScale(wasBadged, isBadged);
         invalidate();
@@ -578,7 +580,7 @@ public class FolderIcon extends FrameLayout implements FolderListener {
     @Override
     public void onRemove(ShortcutInfo item) {
         boolean wasBadged = mBadgeInfo.hasBadge();
-        mBadgeInfo.subtractBadgeInfo(mLauncher.getBadgeInfoForItem(item));
+        mBadgeInfo.subtractBadgeInfo(mLauncher.getPopupDataProvider().getBadgeInfoForItem(item));
         boolean isBadged = mBadgeInfo.hasBadge();
         updateBadgeScale(wasBadged, isBadged);
         invalidate();

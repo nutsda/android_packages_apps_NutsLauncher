@@ -31,10 +31,14 @@ abstract class BaseFlags {
     public static final boolean IS_DOGFOOD_BUILD = false;
     public static final String AUTHORITY = "com.android.launcher3.settings".intern();
 
+    // Custom flags go below this
+    public static boolean LAUNCHER3_DISABLE_ICON_NORMALIZATION = false;
     // When enabled allows to use any point on the fast scrollbar to start dragging.
     public static final boolean LAUNCHER3_DIRECT_SCROLL = true;
     // When enabled the promise icon is visible in all apps while installation an app.
     public static final boolean LAUNCHER3_PROMISE_APPS_IN_ALL_APPS = false;
+    // When enabled allows use of physics based motions in the Launcher.
+    public static final boolean LAUNCHER3_PHYSICS = true;
     // When enabled allows use of spring motions on the icons.
     public static final boolean LAUNCHER3_SPRING_ICONS = true;
 
@@ -42,6 +46,12 @@ abstract class BaseFlags {
     public static final boolean QSB_ON_FIRST_SCREEN = true;
     // When enabled the all-apps icon is not added to the hotseat.
     public static final boolean NO_ALL_APPS_ICON = true;
+    // When enabled, icons not supporting {@link AdaptiveIconDrawable} will be wrapped in {@link FixedScaleDrawable}.
+    public static final boolean LEGACY_ICON_TREATMENT = true;
+    // When enabled, adaptive icons would have shadows baked when being stored to icon cache.
+    public static final boolean ADAPTIVE_ICON_SHADOW = true;
+    // When enabled, app discovery will be enabled if service is implemented
+    public static final boolean DISCOVERY_ENABLED = false;
 
     // When true, custom widgets are loaded using CustomWidgetParser.
     public static final boolean ENABLE_CUSTOM_WIDGETS = false;
@@ -51,8 +61,6 @@ abstract class BaseFlags {
 
     // When enabled shows a work profile tab in all apps
     public static final boolean ALL_APPS_TABS_ENABLED = true;
-
-    // When true, overview shows screenshots in the orientation they were taken rather than
-    // trying to make them fit the orientation the device is in.
-    public static final boolean OVERVIEW_USE_SCREENSHOT_ORIENTATION = true;
+    // When enabled prediction row is rendered as it's own custom view
+    public static final boolean ALL_APPS_PREDICTION_ROW_VIEW = true;
 }

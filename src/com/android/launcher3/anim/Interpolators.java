@@ -16,12 +16,10 @@
 
 package com.android.launcher3.anim;
 
-import android.graphics.Path;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
-import android.view.animation.OvershootInterpolator;
 import android.view.animation.PathInterpolator;
 
 
@@ -38,48 +36,22 @@ public class Interpolators {
 
     public static final Interpolator DEACCEL = new DecelerateInterpolator();
     public static final Interpolator DEACCEL_1_5 = new DecelerateInterpolator(1.5f);
-    public static final Interpolator DEACCEL_1_7 = new DecelerateInterpolator(1.7f);
     public static final Interpolator DEACCEL_2 = new DecelerateInterpolator(2);
     public static final Interpolator DEACCEL_2_5 = new DecelerateInterpolator(2.5f);
     public static final Interpolator DEACCEL_3 = new DecelerateInterpolator(3f);
 
     public static final Interpolator FAST_OUT_SLOW_IN = new PathInterpolator(0.4f, 0f, 0.2f, 1f);
 
-    public static final Interpolator AGGRESSIVE_EASE = new PathInterpolator(0.2f, 0f, 0f, 1f);
-    public static final Interpolator AGGRESSIVE_EASE_IN_OUT = new PathInterpolator(0.6f,0, 0.4f, 1);
-
-    public static final Interpolator EXAGGERATED_EASE;
-
-    static {
-        Path exaggeratedEase = new Path();
-        exaggeratedEase.moveTo(0, 0);
-        exaggeratedEase.cubicTo(0.05f, 0f, 0.133333f, 0.08f, 0.166666f, 0.4f);
-        exaggeratedEase.cubicTo(0.225f, 0.94f, 0.5f, 1f, 1f, 1f);
-        EXAGGERATED_EASE = new PathInterpolator(exaggeratedEase);
-    }
-
-    public static final Interpolator OVERSHOOT_1_2 = new OvershootInterpolator(1.2f);
-
-    public static final Interpolator TOUCH_RESPONSE_INTERPOLATOR =
-            new PathInterpolator(0.3f, 0f, 0.1f, 1f);
-
     /**
-     * Inversion of ZOOM_OUT, compounded with an ease-out.
+     * Inversion of zInterpolate, compounded with an ease-out.
      */
     public static final Interpolator ZOOM_IN = new Interpolator() {
-        @Override
-        public float getInterpolation(float v) {
-            return DEACCEL_3.getInterpolation(1 - ZOOM_OUT.getInterpolation(1 - v));
-        }
-    };
-
-    public static final Interpolator ZOOM_OUT = new Interpolator() {
 
         private static final float FOCAL_LENGTH = 0.35f;
 
         @Override
         public float getInterpolation(float v) {
-            return zInterpolate(v);
+            return DEACCEL_3.getInterpolation(1 - zInterpolate(1 - v));
         }
 
         /**
@@ -114,25 +86,5 @@ public class Interpolators {
 
     public static Interpolator scrollInterpolatorForVelocity(float velocity) {
         return Math.abs(velocity) > FAST_FLING_PX_MS ? SCROLL : SCROLL_CUBIC;
-    }
-
-    /**
-     * Runs the given interpolator such that the entire progress is set between the given bounds.
-     * That is, we set the interpolation to 0 until lowerBound and reach 1 by upperBound.
-     */
-    public static Interpolator clampToProgress(Interpolator interpolator, float lowerBound,
-            float upperBound) {
-        if (upperBound <= lowerBound) {
-            throw new IllegalArgumentException("lowerBound must be less than upperBound");
-        }
-        return t -> {
-            if (t < lowerBound) {
-                return 0;
-            }
-            if (t > upperBound) {
-                return 1;
-            }
-            return interpolator.getInterpolation((t - lowerBound) / (upperBound - lowerBound));
-        };
     }
 }

@@ -81,7 +81,6 @@ public abstract class AbstractSlideInView extends AbstractFloatingView
             @Override
             public void onAnimationEnd(Animator animation) {
                 mSwipeDetector.finishedScrolling();
-                announceAccessibilityChanges();
             }
         });
     }

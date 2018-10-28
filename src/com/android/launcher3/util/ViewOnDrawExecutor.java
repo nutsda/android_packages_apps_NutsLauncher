@@ -34,25 +34,24 @@ public class ViewOnDrawExecutor implements Executor, OnDrawListener, Runnable,
         OnAttachStateChangeListener {
 
     private final ArrayList<Runnable> mTasks = new ArrayList<>();
+    private final Executor mExecutor;
 
     private Launcher mLauncher;
     private View mAttachedView;
     private boolean mCompleted;
+    private boolean mIsExecuting;
 
     private boolean mLoadAnimationCompleted;
     private boolean mFirstDrawCompleted;
 
-    public void attachTo(Launcher launcher) {
-        attachTo(launcher, launcher.getWorkspace(), true /* waitForLoadAnimation */);
+    public ViewOnDrawExecutor(Executor executor) {
+        mExecutor = executor;
     }
 
-    public void attachTo(Launcher launcher, View attachedView, boolean waitForLoadAnimation) {
+    public void attachTo(Launcher launcher) {
         mLauncher = launcher;
-        mAttachedView = attachedView;
+        mAttachedView = launcher.getWorkspace();
         mAttachedView.addOnAttachStateChangeListener(this);
-        if (!waitForLoadAnimation) {
-            mLoadAnimationCompleted = true;
-        }
 
         attachObserver();
     }
@@ -75,12 +74,19 @@ public class ViewOnDrawExecutor implements Executor, OnDrawListener, Runnable,
     }
 
     @Override
-    public void onViewDetachedFromWindow(View v) {}
+    public void onViewDetachedFromWindow(View v) { }
 
     @Override
     public void onDraw() {
         mFirstDrawCompleted = true;
         mAttachedView.post(this);
+    }
+
+    /**
+     * Returns whether the executor is still queuing tasks and hasn't yet executed them.
+     */
+    public boolean canQueue() {
+        return !mIsExecuting && !mCompleted;
     }
 
     public void onLoadAnimationCompleted() {
@@ -94,13 +100,18 @@ public class ViewOnDrawExecutor implements Executor, OnDrawListener, Runnable,
     public void run() {
         // Post the pending tasks after both onDraw and onLoadAnimationCompleted have been called.
         if (mLoadAnimationCompleted && mFirstDrawCompleted && !mCompleted) {
-            runAllTasks();
+            mIsExecuting = true;
+            for (final Runnable r : mTasks) {
+                mExecutor.execute(r);
+            }
+            markCompleted();
         }
     }
 
     public void markCompleted() {
         mTasks.clear();
         mCompleted = true;
+        mIsExecuting = false;
         if (mAttachedView != null) {
             mAttachedView.getViewTreeObserver().removeOnDrawListener(this);
             mAttachedView.removeOnAttachStateChangeListener(this);
@@ -109,16 +120,5 @@ public class ViewOnDrawExecutor implements Executor, OnDrawListener, Runnable,
             mLauncher.clearPendingExecutor(this);
         }
         LauncherModel.setWorkerPriority(Process.THREAD_PRIORITY_DEFAULT);
-    }
-
-    protected boolean isCompleted() {
-        return mCompleted;
-    }
-
-    protected void runAllTasks() {
-        for (final Runnable r : mTasks) {
-            r.run();
-        }
-        markCompleted();
     }
 }

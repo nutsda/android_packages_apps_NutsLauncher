@@ -15,14 +15,41 @@
  */
 package com.android.launcher3.pageindicators;
 
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.View;
+
 /**
  * Base class for a page indicator.
  */
-public interface PageIndicator {
+public abstract class PageIndicator extends View {
 
-    void setScroll(int currentScroll, int totalScroll);
+    protected int mNumPages = 1;
 
-    void setActiveMarker(int activePage);
+    public PageIndicator(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+    }
 
-    void setMarkersCount(int numMarkers);
+    public void setScroll(int currentScroll, int totalScroll) {}
+
+    public void setActiveMarker(int activePage) {}
+
+    public void addMarker() {
+        mNumPages++;
+        onPageCountChanged();
+    }
+
+    public void removeMarker() {
+        mNumPages--;
+        onPageCountChanged();
+    }
+
+    public void setMarkersCount(int numMarkers) {
+        mNumPages = numMarkers;
+        onPageCountChanged();
+    }
+
+    protected void onPageCountChanged() {}
+
+    public void setShouldAutoHide(boolean shouldAutoHide) {}
 }

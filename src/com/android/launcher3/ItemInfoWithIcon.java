@@ -29,11 +29,6 @@ public abstract class ItemInfoWithIcon extends ItemInfo {
     public Bitmap iconBitmap;
 
     /**
-     * Dominant color in the {@link #iconBitmap}.
-     */
-    public int iconColor;
-
-    /**
      * Indicates whether we're using a low res icon
      */
     public boolean usingLowResIcon;
@@ -91,11 +86,6 @@ public abstract class ItemInfoWithIcon extends ItemInfo {
     public static final int FLAG_ADAPTIVE_ICON = 1 << 8;
 
     /**
-     * Flag indicating that the icon is badged.
-     */
-    public static final int FLAG_ICON_BADGED = 1 << 9;
-
-    /**
      * Status associated with the system state of the underlying item. This is calculated every
      * time a new info is created and not persisted on the disk.
      */
@@ -106,7 +96,6 @@ public abstract class ItemInfoWithIcon extends ItemInfo {
     protected ItemInfoWithIcon(ItemInfoWithIcon info) {
         super(info);
         iconBitmap = info.iconBitmap;
-        iconColor = info.iconColor;
         usingLowResIcon = info.usingLowResIcon;
         runtimeStatusFlags = info.runtimeStatusFlags;
     }

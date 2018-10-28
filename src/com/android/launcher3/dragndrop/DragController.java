@@ -138,7 +138,7 @@ public class DragController implements DragDriver.EventListener, TouchController
      */
     public DragView startDrag(Bitmap b, int dragLayerX, int dragLayerY,
             DragSource source, ItemInfo dragInfo, Point dragOffset, Rect dragRegion,
-            float initialDragViewScale, float dragViewScaleOnDrop, DragOptions options) {
+            float initialDragViewScale, DragOptions options) {
         if (PROFILE_DRAWING_DURING_DRAG) {
             android.os.Debug.startMethodTracing("Launcher");
         }
@@ -169,7 +169,7 @@ public class DragController implements DragDriver.EventListener, TouchController
         final float scaleDps = mIsInPreDrag
                 ? res.getDimensionPixelSize(R.dimen.pre_drag_view_scale) : 0f;
         final DragView dragView = mDragObject.dragView = new DragView(mLauncher, b, registrationX,
-                registrationY, initialDragViewScale, dragViewScaleOnDrop, scaleDps);
+                registrationY, initialDragViewScale, scaleDps);
         dragView.setItemInfo(dragInfo);
         mDragObject.dragComplete = false;
         if (mOptions.isAccessibleDrag) {
@@ -583,12 +583,6 @@ public class DragController implements DragDriver.EventListener, TouchController
         }
 
         mDragObject.dragComplete = true;
-        if (mIsInPreDrag) {
-            if (dropTarget != null) {
-                dropTarget.onDragExit(mDragObject);
-            }
-            return;
-        }
 
         // Drop onto the target.
         boolean accepted = false;
@@ -597,15 +591,17 @@ public class DragController implements DragDriver.EventListener, TouchController
             if (dropTarget.acceptDrop(mDragObject)) {
                 if (flingAnimation != null) {
                     flingAnimation.run();
-                } else {
+                } else if (!mIsInPreDrag) {
                     dropTarget.onDrop(mDragObject, mOptions);
                 }
                 accepted = true;
             }
         }
         final View dropTargetAsView = dropTarget instanceof View ? (View) dropTarget : null;
-        mLauncher.getUserEventDispatcher().logDragNDrop(mDragObject, dropTargetAsView);
-        dispatchDropComplete(dropTargetAsView, accepted);
+        if (!mIsInPreDrag) {
+            mLauncher.getUserEventDispatcher().logDragNDrop(mDragObject, dropTargetAsView);
+            dispatchDropComplete(dropTargetAsView, accepted);
+        }
     }
 
     private DropTarget findDropTarget(int x, int y, int[] dropCoordinates) {

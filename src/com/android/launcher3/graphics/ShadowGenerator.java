@@ -46,13 +46,17 @@ public class ShadowGenerator {
 
     private static final int AMBIENT_SHADOW_ALPHA = 30;
 
+    private static final Object LOCK = new Object();
+    // Singleton object guarded by {@link #LOCK}
+    private static ShadowGenerator sShadowGenerator;
+
     private final int mIconSize;
 
     private final Paint mBlurPaint;
     private final Paint mDrawPaint;
     private final BlurMaskFilter mDefaultBlurMaskFilter;
 
-    public ShadowGenerator(Context context) {
+    private ShadowGenerator(Context context) {
         mIconSize = LauncherAppState.getIDP(context).iconBitmapSize;
         mBlurPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         mDrawPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -80,6 +84,18 @@ public class ShadowGenerator {
         // Draw the icon
         mDrawPaint.setAlpha(255);
         out.drawBitmap(icon, 0, 0, mDrawPaint);
+    }
+
+    public static ShadowGenerator getInstance(Context context) {
+        // TODO: This currently fails as the system default icon also needs a shadow as it
+        // uses adaptive icon.
+        // Preconditions.assertNonUiThread();
+        synchronized (LOCK) {
+            if (sShadowGenerator == null) {
+                sShadowGenerator = new ShadowGenerator(context);
+            }
+        }
+        return sShadowGenerator;
     }
 
     /**

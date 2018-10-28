@@ -1,6 +1,7 @@
 package com.android.launcher3.shortcuts;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.UserHandle;
 
@@ -17,8 +18,8 @@ public class ShortcutKey extends ComponentKey {
         super(new ComponentName(packageName, id), user);
     }
 
-    public ShortcutKey(ComponentName componentName, UserHandle user) {
-        super(componentName, user);
+    public ShortcutKey(Context context, String componentKeyStr) {
+        super(context, componentKeyStr);
     }
 
     public String getId() {

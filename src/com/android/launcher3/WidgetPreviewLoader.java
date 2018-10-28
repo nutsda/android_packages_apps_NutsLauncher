@@ -338,8 +338,7 @@ public class WidgetPreviewLoader {
         int previewWidth;
         int previewHeight;
 
-        if (widgetPreviewExists && drawable.getIntrinsicWidth() > 0
-                && drawable.getIntrinsicHeight() > 0) {
+        if (widgetPreviewExists) {
             previewWidth = drawable.getIntrinsicWidth();
             previewHeight = drawable.getIntrinsicHeight();
         } else {
@@ -359,8 +358,8 @@ public class WidgetPreviewLoader {
             scale = maxPreviewWidth / (float) (previewWidth);
         }
         if (scale != 1f) {
-            previewWidth = Math.max((int)(scale * previewWidth), 1);
-            previewHeight = Math.max((int)(scale * previewHeight), 1);
+            previewWidth = (int) (scale * previewWidth);
+            previewHeight = (int) (scale * previewHeight);
         }
 
         // If a bitmap is passed in, we use it; otherwise, we create a bitmap of the right size
@@ -470,11 +469,8 @@ public class WidgetPreviewLoader {
         }
         RectF boxRect = drawBoxWithShadow(c, size, size);
 
-        LauncherIcons li = LauncherIcons.obtain(mContext);
-        Bitmap icon = li.createScaledBitmapWithoutShadow(
-                mutateOnMainThread(info.getFullResIcon(mIconCache)), 0);
-        li.recycle();
-
+        Bitmap icon = LauncherIcons.createScaledBitmapWithoutShadow(
+                mutateOnMainThread(info.getFullResIcon(mIconCache)), mContext, 0);
         Rect src = new Rect(0, 0, icon.getWidth(), icon.getHeight());
 
         boxRect.set(0, 0, iconSize, iconSize);

@@ -1,6 +1,5 @@
 package com.android.launcher3;
 
-import android.content.Context;
 import android.content.pm.LauncherActivityInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -9,26 +8,17 @@ import java.util.Locale;
 
 public class IconProvider {
 
+    private static final boolean DBG = false;
+    private static final String TAG = "IconProvider";
+
     protected String mSystemState;
 
-    public static IconProvider newInstance(Context context) {
-        IconProvider provider = Utilities.getOverrideObject(
-                IconProvider.class, context, R.string.icon_provider_class);
-        provider.updateSystemStateString(context);
-        return provider;
+    public IconProvider() {
+        updateSystemStateString();
     }
 
-    public IconProvider() { }
-
-    public void updateSystemStateString(Context context) {
-        final String locale;
-        if (Utilities.ATLEAST_NOUGAT) {
-            locale = context.getResources().getConfiguration().getLocales().toLanguageTags();
-        } else {
-            locale = Locale.getDefault().toString();
-        }
-
-        mSystemState = locale + "," + Build.VERSION.SDK_INT;
+    public void updateSystemStateString() {
+        mSystemState = Locale.getDefault().toString() + "," + Build.VERSION.SDK_INT;
     }
 
     public String getIconSystemState(String packageName) {

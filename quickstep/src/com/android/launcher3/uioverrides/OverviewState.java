@@ -16,59 +16,57 @@
 package com.android.launcher3.uioverrides;
 
 import static com.android.launcher3.LauncherAnimUtils.OVERVIEW_TRANSITION_MS;
-import static com.android.launcher3.anim.Interpolators.DEACCEL_2;
-import static com.android.launcher3.states.RotationHelper.REQUEST_ROTATE;
 
+import android.graphics.Rect;
 import android.view.View;
 
-import com.android.launcher3.AbstractFloatingView;
-import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherState;
+import com.android.launcher3.R;
+import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
-import com.android.launcher3.allapps.DiscoveryBounce;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
-import com.android.quickstep.views.RecentsView;
+import com.android.quickstep.RecentsView;
 
 /**
  * Definition for overview state
  */
 public class OverviewState extends LauncherState {
 
-    private static final int STATE_FLAGS = FLAG_WORKSPACE_ICONS_CAN_BE_DRAGGED
-            | FLAG_DISABLE_RESTORE | FLAG_OVERVIEW_UI | FLAG_DISABLE_ACCESSIBILITY;
+    public static final float WORKSPACE_SCALE_ON_SCROLL = 0.9f;
+
+    private static final int STATE_FLAGS = FLAG_SHOW_SCRIM | FLAG_WORKSPACE_ICONS_CAN_BE_DRAGGED;
 
     public OverviewState(int id) {
-        this(id, OVERVIEW_TRANSITION_MS, STATE_FLAGS);
-    }
-
-    protected OverviewState(int id, int transitionDuration, int stateFlags) {
-        super(id, ContainerType.TASKSWITCHER, transitionDuration, stateFlags);
+        super(id, ContainerType.WORKSPACE, OVERVIEW_TRANSITION_MS, 1f, STATE_FLAGS);
     }
 
     @Override
     public float[] getWorkspaceScaleAndTranslation(Launcher launcher) {
-        RecentsView recentsView = launcher.getOverviewPanel();
-        Workspace workspace = launcher.getWorkspace();
-        View workspacePage = workspace.getPageAt(workspace.getCurrentPage());
-        float workspacePageWidth = workspacePage != null && workspacePage.getWidth() != 0
-                ? workspacePage.getWidth() : launcher.getDeviceProfile().availableWidthPx;
-        recentsView.getTaskSize(sTempRect);
-        float scale = (float) sTempRect.width() / workspacePageWidth;
-        float parallaxFactor = 0.5f;
-        return new float[]{scale, 0, -getDefaultSwipeHeight(launcher) * parallaxFactor};
+        Rect pageRect = new Rect();
+        RecentsView.getPageRect(launcher, pageRect);
+        if (launcher.getWorkspace().getNormalChildWidth() <= 0 || pageRect.isEmpty()) {
+            return super.getWorkspaceScaleAndTranslation(launcher);
+        }
+
+        RecentsView rv = launcher.getOverviewPanel();
+        float overlap = 0;
+        if (rv.getCurrentPage() >= rv.getFirstTaskIndex()) {
+            Utilities.scaleRectAboutCenter(pageRect, WORKSPACE_SCALE_ON_SCROLL);
+            overlap = launcher.getResources().getDimension(R.dimen.workspace_overview_offset_x);
+        }
+        return getScaleAndTranslationForPageRect(launcher, overlap, pageRect);
     }
 
     @Override
-    public float[] getOverviewScaleAndTranslationYFactor(Launcher launcher) {
-        return new float[] {1f, 0f};
+    public float getHoseatAlpha(Launcher launcher) {
+        return launcher.getDeviceProfile().isVerticalBarLayout() ? 0 : 1;
     }
 
     @Override
     public void onStateEnabled(Launcher launcher) {
         RecentsView rv = launcher.getOverviewPanel();
         rv.setOverviewStateEnabled(true);
-        AbstractFloatingView.closeAllOpenViews(launcher);
     }
 
     @Override
@@ -78,48 +76,27 @@ public class OverviewState extends LauncherState {
     }
 
     @Override
-    public void onStateTransitionEnd(Launcher launcher) {
-        launcher.getRotationHelper().setCurrentStateRequest(REQUEST_ROTATE);
-        DiscoveryBounce.showForOverviewIfNeeded(launcher);
+    public View getFinalFocus(Launcher launcher) {
+        return launcher.getOverviewPanel();
     }
 
-    public PageAlphaProvider getWorkspacePageAlphaProvider(Launcher launcher) {
-        return new PageAlphaProvider(DEACCEL_2) {
-            @Override
-            public float getPageAlpha(int pageIndex) {
-                return 0;
-            }
-        };
-    }
+    public static float[] getScaleAndTranslationForPageRect(Launcher launcher, float offsetX,
+            Rect pageRect) {
+        Workspace ws = launcher.getWorkspace();
+        float childWidth = ws.getNormalChildWidth();
 
-    @Override
-    public int getVisibleElements(Launcher launcher) {
-        if (launcher.getDeviceProfile().isVerticalBarLayout()) {
-            return VERTICAL_SWIPE_INDICATOR;
-        } else {
-            return HOTSEAT_SEARCH_BOX | VERTICAL_SWIPE_INDICATOR |
-                    (launcher.getAppsView().getFloatingHeaderView().hasVisibleContent()
-                            ? ALL_APPS_HEADER_EXTRA : HOTSEAT_ICONS);
+        Rect insets = launcher.getDragLayer().getInsets();
+        float scale = pageRect.width() / childWidth;
+
+        float translationX = offsetX / scale;
+        if (Utilities.isRtl(launcher.getResources())) {
+            translationX = -translationX;
         }
-    }
 
-    @Override
-    public float getWorkspaceScrimAlpha(Launcher launcher) {
-        return 0.5f;
-    }
+        float halfHeight = ws.getHeight() / 2;
+        float childTop = halfHeight - scale * (halfHeight - ws.getPaddingTop() - insets.top);
+        float translationY = pageRect.top - childTop;
 
-    @Override
-    public float getVerticalProgress(Launcher launcher) {
-        if ((getVisibleElements(launcher) & ALL_APPS_HEADER_EXTRA) == 0) {
-            // We have no all apps content, so we're still at the fully down progress.
-            return super.getVerticalProgress(launcher);
-        }
-        return 1 - (getDefaultSwipeHeight(launcher)
-                / launcher.getAllAppsController().getShiftRange());
-    }
-
-    public static float getDefaultSwipeHeight(Launcher launcher) {
-        DeviceProfile dp = launcher.getDeviceProfile();
-        return dp.allAppsCellHeightPx - dp.allAppsIconTextSizePx;
+        return new float[] {scale, translationX, translationY};
     }
 }

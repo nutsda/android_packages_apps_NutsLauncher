@@ -36,6 +36,7 @@ import android.widget.FrameLayout;
 
 import com.android.launcher3.AppWidgetResizeFrame;
 import com.android.launcher3.InvariantDeviceProfile;
+import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
@@ -65,10 +66,6 @@ public class QsbContainerView extends FrameLayout {
     @Override
     public void setPadding(int left, int top, int right, int bottom) {
         super.setPadding(0, 0, 0, 0);
-    }
-
-    protected void setPaddingUnchecked(int left, int top, int right, int bottom) {
-        super.setPadding(left, top, right, bottom);
     }
 
     /**
@@ -103,7 +100,7 @@ public class QsbContainerView extends FrameLayout {
             mWrapper = new FrameLayout(getActivity());
 
             // Only add the view when enabled
-            if (isQsbEnabled()) {
+            if (FeatureFlags.QSB_ON_FIRST_SCREEN) {
                 mWrapper.addView(createQsb(mWrapper));
             }
             return mWrapper;
@@ -215,7 +212,7 @@ public class QsbContainerView extends FrameLayout {
 
         private void rebindFragment() {
             // Exit if the embedded qsb is disabled
-            if (!isQsbEnabled()) {
+            if (!FeatureFlags.QSB_ON_FIRST_SCREEN) {
                 return;
             }
 
@@ -223,10 +220,6 @@ public class QsbContainerView extends FrameLayout {
                 mWrapper.removeAllViews();
                 mWrapper.addView(createQsb(mWrapper));
             }
-        }
-
-        public boolean isQsbEnabled() {
-            return FeatureFlags.QSB_ON_FIRST_SCREEN;
         }
     }
 

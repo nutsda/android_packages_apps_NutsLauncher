@@ -34,6 +34,7 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.database.sqlite.SQLiteStatement;
 import android.net.Uri;
@@ -53,12 +54,14 @@ import com.android.launcher3.LauncherSettings.Favorites;
 import com.android.launcher3.LauncherSettings.WorkspaceScreens;
 import com.android.launcher3.compat.UserManagerCompat;
 import com.android.launcher3.config.FeatureFlags;
+import com.android.launcher3.graphics.IconShapeOverride;
 import com.android.launcher3.logging.FileLog;
 import com.android.launcher3.model.DbDowngradeHelper;
 import com.android.launcher3.provider.LauncherDbUtils;
 import com.android.launcher3.provider.LauncherDbUtils.SQLiteTransaction;
 import com.android.launcher3.provider.RestoreDbTask;
-import com.android.launcher3.util.NoLocaleSQLiteHelper;
+import com.android.launcher3.util.ManagedProfileHeuristic;
+import com.android.launcher3.util.NoLocaleSqliteContext;
 import com.android.launcher3.util.Preconditions;
 import com.android.launcher3.util.Thunk;
 
@@ -113,8 +116,11 @@ public class LauncherProvider extends ContentProvider {
         mListenerHandler = new Handler(mListenerWrapper);
 
         // The content provider exists for the entire duration of the launcher main process and
-        // is the first component to get created.
-        MainProcessInitializer.initialize(getContext().getApplicationContext());
+        // is the first component to get created. Initializing FileLog here ensures that it's
+        // always available in the main process.
+        FileLog.setDir(getContext().getApplicationContext().getFilesDir());
+        IconShapeOverride.apply(getContext());
+        SessionCommitReceiver.applyDefaultUserPrefs(getContext());
         return true;
     }
 
@@ -539,7 +545,7 @@ public class LauncherProvider extends ContentProvider {
     /**
      * The class is subclassed in tests to create an in-memory db.
      */
-    public static class DatabaseHelper extends NoLocaleSQLiteHelper implements LayoutParserCallback {
+    public static class DatabaseHelper extends SQLiteOpenHelper implements LayoutParserCallback {
         private final Handler mWidgetHostResetHandler;
         private final Context mContext;
         private long mMaxItemId = -1;
@@ -565,7 +571,7 @@ public class LauncherProvider extends ContentProvider {
          */
         public DatabaseHelper(
                 Context context, Handler widgetHostResetHandler, String tableName) {
-            super(context, tableName, SCHEMA_VERSION);
+            super(new NoLocaleSqliteContext(context), tableName, null, SCHEMA_VERSION);
             mContext = context;
             mWidgetHostResetHandler = widgetHostResetHandler;
         }
@@ -621,6 +627,10 @@ public class LauncherProvider extends ContentProvider {
 
             // Set the flag for empty DB
             Utilities.getPrefs(mContext).edit().putBoolean(EMPTY_DATABASE_CREATED, true).commit();
+
+            // When a new DB is created, remove all previously stored managed profile information.
+            ManagedProfileHeuristic.processAllUsers(Collections.<UserHandle>emptyList(),
+                    mContext);
         }
 
         public long getDefaultUserSerial() {
@@ -784,7 +794,7 @@ public class LauncherProvider extends ContentProvider {
                 case 23:
                     // No-op
                 case 24:
-                    // No-op
+                    ManagedProfileHeuristic.markExistingUsersForNoFolderCreation(mContext);
                 case 25:
                     convertShortcutsToLauncherActivities(db);
                 case 26:

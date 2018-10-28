@@ -21,7 +21,6 @@ import android.animation.PropertyValuesHolder;
 import android.content.Context;
 import android.graphics.Rect;
 import android.util.AttributeSet;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -32,8 +31,6 @@ import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.LauncherAppWidgetHost.ProviderChangedListener;
 import com.android.launcher3.R;
-import com.android.launcher3.views.RecyclerViewFastScroller;
-import com.android.launcher3.views.TopRoundedCornerView;
 
 /**
  * Popup for showing the full list of available widgets
@@ -45,10 +42,13 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     private static final long FADE_IN_DURATION = 150;
     private static final float VERTICAL_START_POSITION = 0.3f;
 
+    private static final Rect sTempRect = new Rect();
+
     private final Rect mInsets = new Rect();
 
     private final WidgetsListAdapter mAdapter;
 
+    private View mNavBarScrim;
     private WidgetsRecyclerView mRecyclerView;
 
     public WidgetsFullSheet(Context context, AttributeSet attrs, int defStyleAttr) {
@@ -57,7 +57,6 @@ public class WidgetsFullSheet extends BaseWidgetSheet
         mAdapter = new WidgetsListAdapter(context,
                 LayoutInflater.from(context), apps.getWidgetCache(), apps.getIconCache(),
                 this, this);
-
     }
 
     public WidgetsFullSheet(Context context, AttributeSet attrs) {
@@ -68,21 +67,16 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     protected void onFinishInflate() {
         super.onFinishInflate();
         mContent = findViewById(R.id.container);
+        mNavBarScrim = findViewById(R.id.nav_bar_bg);
 
         mRecyclerView = findViewById(R.id.widgets_list_view);
         mRecyclerView.setAdapter(mAdapter);
         mAdapter.setApplyBitmapDeferred(true, mRecyclerView);
 
-        TopRoundedCornerView springLayout = (TopRoundedCornerView) mContent;
-        springLayout.addSpringView(R.id.widgets_list_view);
-        mRecyclerView.setEdgeEffectFactory(springLayout.createEdgeEffectFactory());
-        onWidgetsBound();
-    }
+        mGradientView = findViewById(R.id.gradient_bg);
+        mGradientView.setProgress(1, false);
 
-    @Override
-    protected Pair<View, String> getAccessibilityTarget() {
-        return Pair.create(mRecyclerView, getContext().getString(
-                mIsOpen ? R.string.widgets_list : R.string.widgets_list_closed));
+        onWidgetsBound();
     }
 
     @Override
@@ -102,16 +96,13 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     public void setInsets(Rect insets) {
         mInsets.set(insets);
 
+        mNavBarScrim.getLayoutParams().height = insets.bottom;
         mRecyclerView.setPadding(
                 mRecyclerView.getPaddingLeft(), mRecyclerView.getPaddingTop(),
                 mRecyclerView.getPaddingRight(), insets.bottom);
         if (insets.bottom > 0) {
             setupNavBarColor();
-        } else {
-            clearNavBarColor();
         }
-
-        ((TopRoundedCornerView) mContent).setNavBarScrimHeight(mInsets.bottom);
         requestLayout();
     }
 
@@ -119,24 +110,28 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int widthUsed;
         if (mInsets.bottom > 0) {
+            // If we have bottom insets, we do not show the scrim as it would overlap
+            // with the navbar scrim
+            mGradientView.setVisibility(View.INVISIBLE);
             widthUsed = 0;
         } else {
-            Rect padding = mLauncher.getDeviceProfile().workspacePadding;
-            widthUsed = Math.max(padding.left + padding.right,
+            mLauncher.getDeviceProfile().getWorkspacePadding(sTempRect);
+            widthUsed = Math.max(sTempRect.left + sTempRect.right,
                     2 * (mInsets.left + mInsets.right));
         }
 
         int heightUsed = mInsets.top + mLauncher.getDeviceProfile().edgeMarginPx;
         measureChildWithMargins(mContent, widthMeasureSpec,
                 widthUsed, heightMeasureSpec, heightUsed);
-        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec),
-                MeasureSpec.getSize(heightMeasureSpec));
+        measureChild(mGradientView, widthMeasureSpec, heightMeasureSpec);
+        setMeasuredDimension(mGradientView.getMeasuredWidth(), mGradientView.getMeasuredHeight());
     }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         int width = r - l;
         int height = b - t;
+        mGradientView.layout(0, 0, width, height);
 
         // Content is laid out as center bottom aligned
         int contentWidth = mContent.getMeasuredWidth();
@@ -158,6 +153,10 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     }
 
     private void open(boolean animate) {
+        if (mIsOpen) {
+            return;
+        }
+        mIsOpen = true;
         if (animate) {
             if (mLauncher.getDragLayer().getInsets().bottom > 0) {
                 mContent.setAlpha(0);
@@ -177,15 +176,17 @@ public class WidgetsFullSheet extends BaseWidgetSheet
                     mOpenCloseAnimator.removeListener(this);
                 }
             });
-            post(() -> {
-                mRecyclerView.setLayoutFrozen(true);
-                mOpenCloseAnimator.start();
-                mContent.animate().alpha(1).setDuration(FADE_IN_DURATION);
+            post(new Runnable() {
+                @Override
+                public void run() {
+                    mRecyclerView.setLayoutFrozen(true);
+                    mOpenCloseAnimator.start();
+                    mContent.animate().alpha(1).setDuration(FADE_IN_DURATION);
+                }
             });
         } else {
             setTranslationShift(TRANSLATION_SHIFT_OPENED);
             mAdapter.setApplyBitmapDeferred(false, mRecyclerView);
-            post(this::announceAccessibilityChanges);
         }
     }
 
@@ -204,11 +205,7 @@ public class WidgetsFullSheet extends BaseWidgetSheet
         // Disable swipe down when recycler view is scrolling
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             mNoIntercept = false;
-            RecyclerViewFastScroller scroller = mRecyclerView.getScrollbar();
-            if (scroller.getThumbOffsetY() >= 0 &&
-                    mLauncher.getDragLayer().isEventOverView(scroller, ev)) {
-                mNoIntercept = true;
-            } else if (mLauncher.getDragLayer().isEventOverView(mContent, ev)) {
+            if (mLauncher.getDragLayer().isEventOverView(mContent, ev)) {
                 mNoIntercept = !mRecyclerView.shouldContainerScroll(ev, mLauncher.getDragLayer());
             }
         }
@@ -218,7 +215,6 @@ public class WidgetsFullSheet extends BaseWidgetSheet
     public static WidgetsFullSheet show(Launcher launcher, boolean animate) {
         WidgetsFullSheet sheet = (WidgetsFullSheet) launcher.getLayoutInflater()
                 .inflate(R.layout.widgets_full_sheet, launcher.getDragLayer(), false);
-        sheet.mIsOpen = true;
         launcher.getDragLayer().addView(sheet);
         sheet.open(animate);
         return sheet;

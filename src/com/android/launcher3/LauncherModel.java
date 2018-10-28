@@ -20,6 +20,7 @@ import static com.android.launcher3.LauncherAppState.ACTION_FORCE_ROLOAD;
 import static com.android.launcher3.config.FeatureFlags.IS_DOGFOOD_BUILD;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -39,18 +40,21 @@ import android.util.Pair;
 import com.android.launcher3.compat.LauncherAppsCompat;
 import com.android.launcher3.compat.PackageInstallerCompat.PackageInstallInfo;
 import com.android.launcher3.compat.UserManagerCompat;
+import com.android.launcher3.config.FeatureFlags;
 import com.android.launcher3.graphics.LauncherIcons;
 import com.android.launcher3.model.AddWorkspaceItemsTask;
-import com.android.launcher3.model.BaseModelUpdateTask;
 import com.android.launcher3.model.BgDataModel;
 import com.android.launcher3.model.CacheDataUpdatedTask;
+import com.android.launcher3.model.BaseModelUpdateTask;
 import com.android.launcher3.model.LoaderResults;
 import com.android.launcher3.model.LoaderTask;
 import com.android.launcher3.model.ModelWriter;
 import com.android.launcher3.model.PackageInstallStateChangedTask;
+import com.android.launcher3.model.PackageItemInfo;
 import com.android.launcher3.model.PackageUpdatedTask;
 import com.android.launcher3.model.ShortcutsChangedTask;
 import com.android.launcher3.model.UserLockStateChangedTask;
+import com.android.launcher3.model.WidgetItem;
 import com.android.launcher3.provider.LauncherDbUtils;
 import com.android.launcher3.shortcuts.DeepShortcutManager;
 import com.android.launcher3.shortcuts.ShortcutInfoCompat;
@@ -135,8 +139,6 @@ public class LauncherModel extends BroadcastReceiver
     };
 
     public interface Callbacks {
-        public void rebindModel();
-
         public int getCurrentWorkspaceScreen();
         public void clearPendingBinds();
         public void startBinding();
@@ -198,9 +200,8 @@ public class LauncherModel extends BroadcastReceiver
         enqueueModelUpdateTask(new AddWorkspaceItemsTask(itemList));
     }
 
-    public ModelWriter getWriter(boolean hasVerticalHotseat, boolean verifyChanges) {
-        return new ModelWriter(mApp.getContext(), this, sBgDataModel,
-                hasVerticalHotseat, verifyChanges);
+    public ModelWriter getWriter(boolean hasVerticalHotseat) {
+        return new ModelWriter(mApp.getContext(), sBgDataModel, hasVerticalHotseat);
     }
 
     static void checkItemInfoLocked(
@@ -447,7 +448,11 @@ public class LauncherModel extends BroadcastReceiver
             if (mCallbacks != null && mCallbacks.get() != null) {
                 final Callbacks oldCallbacks = mCallbacks.get();
                 // Clear any pending bind-runnables from the synchronized load process.
-                mUiExecutor.execute(oldCallbacks::clearPendingBinds);
+                mUiExecutor.execute(new Runnable() {
+                            public void run() {
+                                oldCallbacks.clearPendingBinds();
+                            }
+                        });
 
                 // If there is already one running, tell it to stop.
                 stopLoader();
@@ -489,15 +494,6 @@ public class LauncherModel extends BroadcastReceiver
             stopLoader();
             mLoaderTask = new LoaderTask(mApp, mBgAllAppsList, sBgDataModel, results);
             runOnWorkerThread(mLoaderTask);
-        }
-    }
-
-    public void startLoaderForResultsIfNotLoaded(LoaderResults results) {
-        synchronized (mLock) {
-            if (!isModelLoaded()) {
-                Log.d(TAG, "Workspace not loaded, loading now");
-                startLoaderForResults(results);
-            }
         }
     }
 
@@ -624,9 +620,7 @@ public class LauncherModel extends BroadcastReceiver
             @Override
             public ShortcutInfo get() {
                 si.updateFromDeepShortcutInfo(info, mApp.getContext());
-                LauncherIcons li = LauncherIcons.obtain(mApp.getContext());
-                li.createShortcutIcon(info).applyTo(si);
-                li.recycle();
+                si.iconBitmap = LauncherIcons.createShortcutIcon(info, mApp.getContext());
                 return si;
             }
         });

@@ -15,15 +15,16 @@
  */
 package com.android.launcher3.logging;
 
-import android.content.Context;
 import android.util.ArrayMap;
 import android.util.SparseArray;
 import android.view.View;
 
-import com.android.launcher3.AppInfo;
 import com.android.launcher3.ButtonDropTarget;
+import com.android.launcher3.DeleteDropTarget;
+import com.android.launcher3.InfoDropTarget;
 import com.android.launcher3.ItemInfo;
 import com.android.launcher3.LauncherSettings;
+import com.android.launcher3.UninstallDropTarget;
 import com.android.launcher3.userevent.nano.LauncherLogExtensions.TargetExtension;
 import com.android.launcher3.userevent.nano.LauncherLogProto.Action;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
@@ -31,8 +32,6 @@ import com.android.launcher3.userevent.nano.LauncherLogProto.ControlType;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ItemType;
 import com.android.launcher3.userevent.nano.LauncherLogProto.LauncherEvent;
 import com.android.launcher3.userevent.nano.LauncherLogProto.Target;
-import com.android.launcher3.userevent.nano.LauncherLogProto.TipType;
-import com.android.launcher3.util.InstantAppResolver;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -72,12 +71,12 @@ public class LoggerUtils {
         switch (action.type) {
             case Action.Type.TOUCH:
                 str += getFieldName(action.touch, Action.Touch.class);
-                if (action.touch == Action.Touch.SWIPE || action.touch == Action.Touch.FLING) {
+                if (action.touch == Action.Touch.SWIPE) {
                     str += " direction=" + getFieldName(action.dir, Action.Direction.class);
                 }
                 return str;
             case Action.Type.COMMAND: return getFieldName(action.command, Action.Command.class);
-            default: return getFieldName(action.type, Action.Type.class);
+            default: return UNKNOWN;
         }
     }
 
@@ -85,32 +84,23 @@ public class LoggerUtils {
         if (t == null){
             return "";
         }
-        String str = "";
         switch (t.type) {
             case Target.Type.ITEM:
-                str = getItemStr(t);
-                break;
+                return getItemStr(t);
             case Target.Type.CONTROL:
-                str = getFieldName(t.controlType, ControlType.class);
-                break;
+                return getFieldName(t.controlType, ControlType.class);
             case Target.Type.CONTAINER:
-                str = getFieldName(t.containerType, ContainerType.class);
+                String str = getFieldName(t.containerType, ContainerType.class);
                 if (t.containerType == ContainerType.WORKSPACE ||
                         t.containerType == ContainerType.HOTSEAT) {
                     str += " id=" + t.pageIndex;
                 } else if (t.containerType == ContainerType.FOLDER) {
                     str += " grid(" + t.gridX + "," + t.gridY+ ")";
                 }
-                break;
+                return str;
             default:
-                str += "UNKNOWN TARGET TYPE";
+                return "UNKNOWN TARGET TYPE";
         }
-
-        if (t.tipType != TipType.DEFAULT_NONE) {
-            str += " " + getFieldName(t.tipType, TipType.class);
-        }
-
-        return str;
     }
 
     private static String getItemStr(Target t) {
@@ -124,40 +114,25 @@ public class LoggerUtils {
         if (t.intentHash != 0) {
             typeStr += ", intentHash=" + t.intentHash;
         }
-        if ((t.packageNameHash != 0 || t.componentHash != 0 || t.intentHash != 0) &&
-                t.itemType != ItemType.TASK) {
-            typeStr += ", predictiveRank=" + t.predictedRank + ", grid(" + t.gridX + "," + t.gridY
-                    + "), span(" + t.spanX + "," + t.spanY
-                    + "), pageIdx=" + t.pageIndex;
-
+        if (t.packageNameHash != 0 || t.componentHash != 0 || t.intentHash != 0) {
+            typeStr += ", predictiveRank=" + t.predictedRank;
         }
-        if (t.itemType == ItemType.TASK) {
-            typeStr += ", pageIdx=" + t.pageIndex;
-        }
-        return typeStr;
+        return typeStr + ", grid(" + t.gridX + "," + t.gridY + "), span(" + t.spanX + "," + t.spanY
+                + "), pageIdx=" + t.pageIndex;
     }
 
-    public static Target newItemTarget(int itemType) {
-        Target t = newTarget(Target.Type.ITEM);
-        t.itemType = itemType;
-        return t;
-    }
-
-    public static Target newItemTarget(View v, InstantAppResolver instantAppResolver) {
+    public static Target newItemTarget(View v) {
         return (v.getTag() instanceof ItemInfo)
-                ? newItemTarget((ItemInfo) v.getTag(), instantAppResolver)
+                ? newItemTarget((ItemInfo) v.getTag())
                 : newTarget(Target.Type.ITEM);
     }
 
-    public static Target newItemTarget(ItemInfo info, InstantAppResolver instantAppResolver) {
+    public static Target newItemTarget(ItemInfo info) {
         Target t = newTarget(Target.Type.ITEM);
 
         switch (info.itemType) {
             case LauncherSettings.Favorites.ITEM_TYPE_APPLICATION:
-                t.itemType = (instantAppResolver != null && info instanceof AppInfo
-                        && instantAppResolver.isInstantApp(((AppInfo) info)) )
-                        ? ItemType.WEB_APP
-                        : ItemType.APP_ICON;
+                t.itemType = ItemType.APP_ICON;
                 t.predictedRank = -100; // Never assigned
                 break;
             case LauncherSettings.Favorites.ITEM_TYPE_SHORTCUT:
@@ -180,10 +155,15 @@ public class LoggerUtils {
         if (!(v instanceof ButtonDropTarget)) {
             return newTarget(Target.Type.CONTAINER);
         }
-        if (v instanceof ButtonDropTarget) {
-            return ((ButtonDropTarget) v).getDropTargetForLogging();
+        Target t = newTarget(Target.Type.CONTROL);
+        if (v instanceof InfoDropTarget) {
+            t.controlType = ControlType.APPINFO_TARGET;
+        } else if (v instanceof UninstallDropTarget) {
+            t.controlType = ControlType.UNINSTALL_TARGET;
+        } else if (v instanceof DeleteDropTarget) {
+            t.controlType = ControlType.REMOVE_TARGET;
         }
-        return newTarget(Target.Type.CONTROL);
+        return t;
     }
 
     public static Target newTarget(int targetType, TargetExtension extension) {
@@ -198,13 +178,6 @@ public class LoggerUtils {
         t.type = targetType;
         return t;
     }
-
-    public static Target newControlTarget(int controlType) {
-        Target t = newTarget(Target.Type.CONTROL);
-        t.controlType = controlType;
-        return t;
-    }
-
     public static Target newContainerTarget(int containerType) {
         Target t = newTarget(Target.Type.CONTAINER);
         t.containerType = containerType;
@@ -216,13 +189,11 @@ public class LoggerUtils {
         a.type = type;
         return a;
     }
-
     public static Action newCommandAction(int command) {
         Action a = newAction(Action.Type.COMMAND);
         a.command = command;
         return a;
     }
-
     public static Action newTouchAction(int touch) {
         Action a = newAction(Action.Type.TOUCH);
         a.touch = touch;

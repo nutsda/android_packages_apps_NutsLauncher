@@ -15,14 +15,13 @@
  */
 package com.android.launcher3.allapps.search;
 
-import static android.view.View.MeasureSpec.EXACTLY;
-import static android.view.View.MeasureSpec.getSize;
-import static android.view.View.MeasureSpec.makeMeasureSpec;
-
-import static com.android.launcher3.graphics.IconNormalizer.ICON_VISIBLE_AREA_FACTOR;
-
 import android.content.Context;
 import android.graphics.Rect;
+import android.support.animation.FloatValueHolder;
+import android.support.animation.SpringAnimation;
+import android.support.animation.SpringForce;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.text.Selection;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -31,17 +30,17 @@ import android.text.method.TextKeyListener;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.FrameLayout;
 
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.ExtendedEditText;
-import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.allapps.AllAppsContainerView;
-import com.android.launcher3.allapps.AllAppsStore;
 import com.android.launcher3.allapps.AlphabeticalAppsList;
 import com.android.launcher3.allapps.SearchUiManager;
+import com.android.launcher3.discovery.AppDiscoveryItem;
+import com.android.launcher3.discovery.AppDiscoveryUpdateState;
 import com.android.launcher3.graphics.TintedDrawableSpan;
 import com.android.launcher3.util.ComponentKey;
 
@@ -50,21 +49,21 @@ import java.util.ArrayList;
 /**
  * Layout to contain the All-apps search UI.
  */
-public class AppsSearchContainerLayout extends ExtendedEditText
-        implements SearchUiManager, AllAppsSearchBarController.Callbacks,
-        AllAppsStore.OnUpdateListener, Insettable {
-
+public class AppsSearchContainerLayout extends FrameLayout
+        implements SearchUiManager, AllAppsSearchBarController.Callbacks {
 
     private final Launcher mLauncher;
+    private final int mMinHeight;
+    private final int mSearchBoxHeight;
     private final AllAppsSearchBarController mSearchBarController;
     private final SpannableStringBuilder mSearchQueryBuilder;
 
+    private ExtendedEditText mSearchInput;
     private AlphabeticalAppsList mApps;
+    private View mDivider;
+    private HeaderElevationController mElevationController;
     private AllAppsContainerView mAppsView;
-
-    // This value was used to position the QSB. We store it here for translationY animations.
-    private final float mFixedTranslationY;
-    private final float mMarginTopAdjusting;
+    private SpringAnimation mSpring;
 
     public AppsSearchContainerLayout(Context context) {
         this(context, null);
@@ -78,80 +77,72 @@ public class AppsSearchContainerLayout extends ExtendedEditText
         super(context, attrs, defStyleAttr);
 
         mLauncher = Launcher.getLauncher(context);
+        mMinHeight = getResources().getDimensionPixelSize(R.dimen.all_apps_search_bar_height);
+        mSearchBoxHeight = getResources()
+                .getDimensionPixelSize(R.dimen.all_apps_search_bar_field_height);
         mSearchBarController = new AllAppsSearchBarController();
 
         mSearchQueryBuilder = new SpannableStringBuilder();
         Selection.setSelection(mSearchQueryBuilder, 0);
 
-        mFixedTranslationY = getTranslationY();
-        mMarginTopAdjusting = mFixedTranslationY - getPaddingTop();
+        // Note: This spring does nothing.
+        mSpring = new SpringAnimation(new FloatValueHolder()).setSpring(new SpringForce(0));
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        mSearchInput = findViewById(R.id.search_box_input);
+        mDivider = findViewById(R.id.search_divider);
+        mElevationController = new HeaderElevationController(mDivider);
 
         // Update the hint to contain the icon.
         // Prefix the original hint with two spaces. The first space gets replaced by the icon
         // using span. The second space is used for a singe space character between the hint
         // and the icon.
-        SpannableString spanned = new SpannableString("  " + getHint());
+        SpannableString spanned = new SpannableString("  " + mSearchInput.getHint());
         spanned.setSpan(new TintedDrawableSpan(getContext(), R.drawable.ic_allapps_search),
                 0, 1, Spannable.SPAN_EXCLUSIVE_INCLUSIVE);
-        setHint(spanned);
-    }
+        mSearchInput.setHint(spanned);
 
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        mLauncher.getAppsView().getAppsStore().addUpdateListener(this);
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        mLauncher.getAppsView().getAppsStore().removeUpdateListener(this);
+        DeviceProfile dp = mLauncher.getDeviceProfile();
+        if (!dp.isVerticalBarLayout()) {
+            LayoutParams lp = (LayoutParams) mDivider.getLayoutParams();
+            lp.leftMargin = lp.rightMargin = dp.edgeMarginPx;
+        }
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        // Update the width to match the grid padding
-        DeviceProfile dp = mLauncher.getDeviceProfile();
-        int myRequestedWidth = getSize(widthMeasureSpec);
-        int rowWidth = myRequestedWidth - mAppsView.getActiveRecyclerView().getPaddingLeft()
-                - mAppsView.getActiveRecyclerView().getPaddingRight();
-
-        int cellWidth = DeviceProfile.calculateCellWidth(rowWidth, dp.inv.numHotseatIcons);
-        int iconVisibleSize = Math.round(ICON_VISIBLE_AREA_FACTOR * dp.iconSizePx);
-        int iconPadding = cellWidth - iconVisibleSize;
-
-        int myWidth = rowWidth - iconPadding + getPaddingLeft() + getPaddingRight();
-        super.onMeasure(makeMeasureSpec(myWidth, EXACTLY), heightMeasureSpec);
+        if (!mLauncher.getDeviceProfile().isVerticalBarLayout()) {
+            getLayoutParams().height = mLauncher.getDragLayer().getInsets().top + mMinHeight;
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-
-        // Shift the widget horizontally so that its centered in the parent (b/63428078)
-        View parent = (View) getParent();
-        int availableWidth = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
-        int myWidth = right - left;
-        int expectedLeft = parent.getPaddingLeft() + (availableWidth - myWidth) / 2;
-        int shift = expectedLeft - left;
-        setTranslationX(shift);
-    }
 
     @Override
     public void initialize(AllAppsContainerView appsView) {
         mApps = appsView.getApps();
         mAppsView = appsView;
+        appsView.addElevationController(mElevationController);
         mSearchBarController.initialize(
-                new DefaultAppSearchAlgorithm(mApps.getApps()), this, mLauncher, this);
+                new DefaultAppSearchAlgorithm(mApps.getApps()), mSearchInput, mLauncher, this);
     }
 
     @Override
-    public void onAppsUpdated() {
+    public @NonNull SpringAnimation getSpringForFling() {
+        return mSpring;
+    }
+
+    @Override
+    public void refreshSearchResult() {
         mSearchBarController.refreshSearchResult();
     }
 
     @Override
-    public void resetSearch() {
+    public void reset() {
+        mElevationController.reset();
         mSearchBarController.reset();
     }
 
@@ -193,25 +184,39 @@ public class AppsSearchContainerLayout extends ExtendedEditText
         mSearchQueryBuilder.clear();
         mSearchQueryBuilder.clearSpans();
         Selection.setSelection(mSearchQueryBuilder, 0);
-        mAppsView.onClearSearchResult();
+    }
+
+    @Override
+    public void onAppDiscoverySearchUpdate(
+            @Nullable AppDiscoveryItem app, @NonNull AppDiscoveryUpdateState state) {
+        if (!mLauncher.isDestroyed()) {
+            mApps.onAppDiscoverySearchUpdate(app, state);
+            notifyResultChanged();
+        }
     }
 
     private void notifyResultChanged() {
+        mElevationController.reset();
         mAppsView.onSearchResultsChanged();
     }
 
     @Override
-    public void setInsets(Rect insets) {
-        MarginLayoutParams mlp = (MarginLayoutParams) getLayoutParams();
-        mlp.topMargin = Math.round(Math.max(-mFixedTranslationY, insets.top - mMarginTopAdjusting));
-        requestLayout();
-
-        DeviceProfile dp = mLauncher.getDeviceProfile();
-        if (dp.isVerticalBarLayout()) {
-            mLauncher.getAllAppsController().setScrollRangeDelta(0);
-        } else {
-            mLauncher.getAllAppsController().setScrollRangeDelta(
-                    insets.bottom + mlp.topMargin + mFixedTranslationY);
-        }
+    public void addOnScrollRangeChangeListener(final OnScrollRangeChangeListener listener) {
+        mLauncher.getHotseat().addOnLayoutChangeListener(new OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom,
+                    int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                DeviceProfile dp = mLauncher.getDeviceProfile();
+                if (!dp.isVerticalBarLayout()) {
+                    Rect insets = mLauncher.getDragLayer().getInsets();
+                    int hotseatBottom = bottom - dp.hotseatBarBottomPaddingPx - insets.bottom;
+                    int searchTopMargin = insets.top + (mMinHeight - mSearchBoxHeight)
+                            + ((MarginLayoutParams) getLayoutParams()).bottomMargin;
+                    listener.onScrollRangeChanged(hotseatBottom - searchTopMargin);
+                } else {
+                    listener.onScrollRangeChanged(bottom);
+                }
+            }
+        });
     }
 }

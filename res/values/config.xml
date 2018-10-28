@@ -24,8 +24,7 @@
         <item></item>
         <item>M50,0L100,0 100,100 0,100 0,0z</item>
         <item>M50,0 C10,0 0,10 0,50 0,90 10,100 50,100 90,100 100,90 100,50 100,10 90,0 50,0 Z</item>
-        <item>M 50 0 L 50 0 L 19.2 0 C 12.4794 0 9.11905 0 6.55211 1.30792 C 4.29417 2.4584 2.4584 4.29417 1.30792 6.55211 C 0 9.11905 0 12.4794 0 19.2 L 0 80.8C 0 87.5206 0 90.8809 1.30792 93.4479 C 2.4584 95.7058 4.29417 97.5416 6.55211 98.6921 C 9.11905 100 12.4794 100 19.2 100 L 80.8 100 C 87.5206 100 90.8809 100 93.4479 98.6921 C 95.7058 97.5416 97.5416 95.7058 98.6921 93.4479 C 100 90.8809 100 87.5206 100 80.8 L 100 19.2 C 100 12.4794 100 9.11905 98.6921 6.55211 C 97.5416 4.29417 95.7058 2.4584 93.4479 1.30792 C 90.8809 0 87.5206 0 80.8 0Z</item>
-	<item>M50 0A50 50,0,1,1,50 100A50 50,0,1,1,50 0</item>
+        <item>M50 0A50 50,0,1,1,50 100A50 50,0,1,1,50 0</item>
         <item>M50,0A50,50,0,0 1 100,50 L100,85 A15,15,0,0 1 85,100 L50,100 A50,50,0,0 1 50,0z</item>
     </string-array>
 
@@ -34,7 +33,6 @@
         <item>@string/icon_shape_system_default</item>
         <item>@string/icon_shape_square</item>
         <item>@string/icon_shape_squircle</item>
-	<item>@string/icon_shape_super_ellipse</item>
         <item>@string/icon_shape_circle</item>
         <item>@string/icon_shape_teardrop</item>
     </string-array>
@@ -43,8 +41,15 @@
     <item type="id" name="drag_event_parity" />
 
 <!-- AllApps & Launcher transitions -->
+    <!-- The alpha of the AppsCustomize bg in spring loaded mode -->
+    <integer name="config_workspaceScrimAlpha">76</integer>
+
     <!-- Out of 100, the percent to shrink the workspace during spring loaded mode. -->
     <integer name="config_workspaceSpringLoadShrinkPercentage">90</integer>
+
+    <!-- This constant stores the ratio of the all apps button drawable which
+         is used for internal (baked-in) padding -->
+    <integer name="config_allAppsButtonPaddingPercent">17</integer>
 
     <!-- The duration of the animation from search hint to text entry -->
     <integer name="config_searchHintAnimationDuration">50</integer>
@@ -91,36 +96,20 @@
     <!-- Name of a user event dispatcher class. -->
     <string name="user_event_dispatcher_class" translatable="false"></string>
 
-    <!-- Name of an app transition manager class. -->
-    <string name="app_transition_manager_class" translatable="false"></string>
-
     <!-- Name of a color extraction implementation class. -->
     <string name="color_extraction_impl_class" translatable="false"></string>
 
     <!-- Name of a subclass of com.android.launcher3.util.InstantAppResolver. Can be empty. -->
     <string name="instant_app_resolver_class" translatable="false"></string>
 
-    <!-- Name of a main process initializer class. -->
-    <string name="main_process_initializer_class" translatable="false"></string>
-
     <!-- Package name of the default wallpaper picker. -->
     <string name="wallpaper_picker_package" translatable="false"></string>
-
-    <!-- Whitelisted package to retrieve packagename for badge. Can be empty. -->
-    <string name="shortcutinfocompat_badgepkg_whitelist" translatable="false"></string>
 
     <!-- View ID to use for QSB widget -->
     <item type="id" name="qsb_widget" />
 
     <!-- View ID used by cell layout to jail its content -->
     <item type="id" name="cell_layout_jail_id" />
-
-    <!-- Tag id used for view scrim -->
-    <item type="id" name="view_scrim" />
-
-    <!-- View IDs to store item highlight information -->
-    <item type="id" name="view_unhighlight_background" />
-    <item type="id" name="view_highlighted" />
 
 <!-- Popup items -->
     <integer name="config_popupOpenCloseDuration">150</integer>
@@ -130,7 +119,7 @@
 <!-- Accessibility actions -->
     <item type="id" name="action_remove" />
     <item type="id" name="action_uninstall" />
-    <item type="id" name="action_reconfigure" />
+    <item type="id" name="action_info" />
     <item type="id" name="action_add_to_workspace" />
     <item type="id" name="action_move" />
     <item type="id" name="action_move_to_workspace" />
@@ -138,7 +127,6 @@
     <item type="id" name="action_move_screen_forwards" />
     <item type="id" name="action_resize" />
     <item type="id" name="action_deep_shortcuts" />
-    <item type="id" name="action_shortcuts_and_notifications"/>
     <item type="id" name="action_dismiss_notification" />
 
 <!-- QSB IDs. DO not change -->
@@ -147,7 +135,6 @@
     <item type="id" name="search_container_all_apps" />
 
 <!-- Recents -->
-    <item type="id" name="overview_panel"/>
     <integer name="config_recentsMaxThumbnailCacheSize">6</integer>
     <integer name="config_recentsMaxIconCacheSize">12</integer>
 

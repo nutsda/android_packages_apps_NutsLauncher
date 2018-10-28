@@ -20,7 +20,6 @@
 
     <!-- Attributes used for launcher theme -->
     <attr name="allAppsScrimColor" format="color" />
-    <attr name="allAppsInterimScrimAlpha" format="integer" />
     <attr name="allAppsNavBarScrimColor" format="color" />
     <attr name="popupColorPrimary" format="color" />
     <attr name="popupColorSecondary" format="color" />
@@ -45,6 +44,7 @@
             <enum name="widget_section" value="3" />
             <enum name="shortcut_popup" value="4" />
         </attr>
+        <attr name="deferShadowGeneration" format="boolean" />
         <attr name="centerVertically" format="boolean" />
     </declare-styleable>
 
@@ -91,6 +91,10 @@
         <attr name="layout_ignoreInsets" format="boolean" />
     </declare-styleable>
 
+    <declare-styleable name="ButtonDropTarget">
+        <attr name="hideParentOnDisable" format="boolean" />
+    </declare-styleable>
+
     <declare-styleable name="InvariantDeviceProfile">
         <attr name="name" format="string" />
         <attr name="minWidthDps" format="float" />
@@ -101,6 +105,8 @@
         <!-- numFolderRows & numFolderColumns defaults to numRows & numColumns, if not specified -->
         <attr name="numFolderRows" format="integer" />
         <attr name="numFolderColumns" format="integer" />
+        <!-- minAllAppsPredictionColumns defaults to numColumns, if not specified -->
+        <attr name="minAllAppsPredictionColumns" format="integer" />
         <!-- numHotseatIcons defaults to numColumns, if not specified -->
         <attr name="numHotseatIcons" format="integer" />
 

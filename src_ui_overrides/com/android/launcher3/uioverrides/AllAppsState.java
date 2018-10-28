@@ -16,21 +16,22 @@
 package com.android.launcher3.uioverrides;
 
 import static com.android.launcher3.LauncherAnimUtils.ALL_APPS_TRANSITION_MS;
-import static com.android.launcher3.allapps.DiscoveryBounce.HOME_BOUNCE_SEEN;
+import static com.android.launcher3.allapps.DiscoveryBounce.APPS_VIEW_SHOWN;
 import static com.android.launcher3.anim.Interpolators.DEACCEL_2;
+
+import android.view.View;
 
 import com.android.launcher3.AbstractFloatingView;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherState;
 import com.android.launcher3.R;
+import com.android.launcher3.allapps.AllAppsTransitionController;
 import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
 
 /**
  * Definition for AllApps state
  */
 public class AllAppsState extends LauncherState {
-
-    private static final float PARALLAX_COEFFICIENT = .125f;
 
     private static final int STATE_FLAGS = FLAG_DISABLE_ACCESSIBILITY;
 
@@ -42,13 +43,13 @@ public class AllAppsState extends LauncherState {
     };
 
     public AllAppsState(int id) {
-        super(id, ContainerType.ALLAPPS, ALL_APPS_TRANSITION_MS, STATE_FLAGS);
+        super(id, ContainerType.ALLAPPS, ALL_APPS_TRANSITION_MS, 0f, STATE_FLAGS);
     }
 
     @Override
     public void onStateEnabled(Launcher launcher) {
-        if (!launcher.getSharedPrefs().getBoolean(HOME_BOUNCE_SEEN, false)) {
-            launcher.getSharedPrefs().edit().putBoolean(HOME_BOUNCE_SEEN, true).apply();
+        if (!launcher.getSharedPrefs().getBoolean(APPS_VIEW_SHOWN, false)) {
+            launcher.getSharedPrefs().edit().putBoolean(APPS_VIEW_SHOWN, true).apply();
         }
 
         AbstractFloatingView.closeAllOpenViews(launcher);
@@ -61,23 +62,19 @@ public class AllAppsState extends LauncherState {
     }
 
     @Override
-    public int getVisibleElements(Launcher launcher) {
-        return ALL_APPS_HEADER | ALL_APPS_CONTENT;
+    public View getFinalFocus(Launcher launcher) {
+        return launcher.getAppsView();
     }
 
     @Override
     public float[] getWorkspaceScaleAndTranslation(Launcher launcher) {
         return new float[] { 1f, 0,
-                -launcher.getAllAppsController().getShiftRange() * PARALLAX_COEFFICIENT};
+                -launcher.getAllAppsController().getShiftRange()
+                        * AllAppsTransitionController.PARALLAX_COEFFICIENT};
     }
 
     @Override
     public PageAlphaProvider getWorkspacePageAlphaProvider(Launcher launcher) {
         return PAGE_ALPHA_PROVIDER;
-    }
-
-    @Override
-    public float getVerticalProgress(Launcher launcher) {
-        return 0f;
     }
 }

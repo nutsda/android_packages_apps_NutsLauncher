@@ -31,6 +31,7 @@ import android.view.ViewDebug;
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.CellLayout;
 import com.android.launcher3.DeviceProfile;
+import com.android.launcher3.FocusHelper.PagedFolderKeyEventListener;
 import com.android.launcher3.InvariantDeviceProfile;
 import com.android.launcher3.ItemInfo;
 import com.android.launcher3.Launcher;
@@ -43,17 +44,18 @@ import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace.ItemOperator;
 import com.android.launcher3.anim.Interpolators;
 import com.android.launcher3.keyboard.ViewGroupFocusHelper;
-import com.android.launcher3.pageindicators.PageIndicatorDots;
-import com.android.launcher3.touch.ItemClickHandler;
+import com.android.launcher3.pageindicators.PageIndicator;
 import com.android.launcher3.util.Thunk;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 
-public class FolderPagedView extends PagedView<PageIndicatorDots> {
+public class FolderPagedView extends PagedView {
 
     private static final String TAG = "FolderPagedView";
+
+    private static final boolean ALLOW_FOLDER_SCROLL = true;
 
     private static final int REORDER_ANIMATION_DURATION = 230;
     private static final int START_VIEW_REORDER_DELAY = 30;
@@ -87,6 +89,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> {
     private int mGridCountY;
 
     private Folder mFolder;
+    private PagedFolderKeyEventListener mKeyListener;
+
+    private PageIndicator mPageIndicator;
 
     public FolderPagedView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -106,6 +111,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> {
 
     public void setFolder(Folder folder) {
         mFolder = folder;
+        mKeyListener = new PagedFolderKeyEventListener(folder);
         mPageIndicator = folder.findViewById(R.id.folder_page_indicator);
         initParentViews(folder);
     }
@@ -177,13 +183,21 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> {
 
     /**
      * Binds items to the layout.
+     * @return list of items that could not be bound, probably because we hit the max size limit.
      */
-    public void bindItems(ArrayList<ShortcutInfo> items) {
+    public ArrayList<ShortcutInfo> bindItems(ArrayList<ShortcutInfo> items) {
         ArrayList<View> icons = new ArrayList<>();
+        ArrayList<ShortcutInfo> extra = new ArrayList<>();
+
         for (ShortcutInfo item : items) {
-            icons.add(createNewView(item));
+            if (!ALLOW_FOLDER_SCROLL && icons.size() >= mMaxItemsPerPage) {
+                extra.add(item);
+            } else {
+                icons.add(createNewView(item));
+            }
         }
         arrangeChildren(icons, icons.size(), false);
+        return extra;
     }
 
     public void allocateSpaceForRank(int rank) {
@@ -235,9 +249,10 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> {
                 R.layout.folder_application, null, false);
         textView.applyFromShortcutInfo(item);
         textView.setHapticFeedbackEnabled(false);
-        textView.setOnClickListener(ItemClickHandler.INSTANCE);
+        textView.setOnClickListener(mFolder);
         textView.setOnLongClickListener(mFolder);
         textView.setOnFocusChangeListener(mFocusIndicatorHelper);
+        textView.setOnKeyListener(mKeyListener);
 
         textView.setLayoutParams(new CellLayout.LayoutParams(
                 item.cellX, item.cellY, item.spanX, item.spanY));
@@ -414,6 +429,10 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> {
         }
         return Math.min(mAllocatedContentSize - 1,
                 pageIndex * mMaxItemsPerPage + sTmpArray[1] * mGridCountX + sTmpArray[0]);
+    }
+
+    public boolean isFull() {
+        return !ALLOW_FOLDER_SCROLL && getItemCount() >= mMaxItemsPerPage;
     }
 
     public View getFirstItem() {

@@ -25,6 +25,7 @@ import com.android.launcher3.InvariantDeviceProfile;
 import com.android.launcher3.ItemInfo;
 import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.LauncherAppWidgetInfo;
+import com.android.launcher3.LauncherModel;
 import com.android.launcher3.LauncherModel.Callbacks;
 import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.MainThreadExecutor;
@@ -36,6 +37,7 @@ import com.android.launcher3.util.LooperIdleLock;
 import com.android.launcher3.util.MultiHashMap;
 import com.android.launcher3.util.ViewOnDrawExecutor;
 import com.android.launcher3.widget.WidgetListRowEntry;
+import com.android.launcher3.widget.WidgetsListAdapter;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -98,7 +100,6 @@ public class LoaderResults {
             workspaceItems.addAll(mBgDataModel.workspaceItems);
             appWidgets.addAll(mBgDataModel.appWidgets);
             orderedScreenIds.addAll(mBgDataModel.workspaceScreens);
-            mBgDataModel.lastBindId++;
         }
 
         final int currentScreen;
@@ -161,7 +162,7 @@ public class LoaderResults {
         // This ensures that the first screen is immediately visible (eg. during rotation)
         // In case of !validFirstPage, bind all pages one after other.
         final Executor deferredExecutor =
-                validFirstPage ? new ViewOnDrawExecutor() : mainExecutor;
+                validFirstPage ? new ViewOnDrawExecutor(mUiExecutor) : mainExecutor;
 
         mainExecutor.execute(new Runnable() {
             @Override
@@ -209,7 +210,7 @@ public class LoaderResults {
 
     /** Filters the set of items who are directly or indirectly (via another container) on the
      * specified screen. */
-    public static <T extends ItemInfo> void filterCurrentWorkspaceItems(long currentScreenId,
+    private <T extends ItemInfo> void filterCurrentWorkspaceItems(long currentScreenId,
             ArrayList<T> allWorkspaceItems,
             ArrayList<T> currentScreenItems,
             ArrayList<T> otherScreenItems) {

@@ -16,9 +16,11 @@
 package com.android.launcher3.states;
 
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_TRANSITION_MS;
-import static com.android.launcher3.states.RotationHelper.REQUEST_LOCK;
 
+import android.content.pm.ActivityInfo;
 import android.graphics.Rect;
+import android.os.Handler;
+import android.view.View;
 
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.InstallShortcutReceiver;
@@ -32,25 +34,24 @@ import com.android.launcher3.userevent.nano.LauncherLogProto.ContainerType;
  */
 public class SpringLoadedState extends LauncherState {
 
-    private static final int STATE_FLAGS = FLAG_MULTI_PAGE |
+    private static final int STATE_FLAGS = FLAG_SHOW_SCRIM | FLAG_MULTI_PAGE |
             FLAG_DISABLE_ACCESSIBILITY | FLAG_DISABLE_RESTORE | FLAG_WORKSPACE_ICONS_CAN_BE_DRAGGED |
-            FLAG_DISABLE_PAGE_CLIPPING | FLAG_PAGE_BACKGROUNDS | FLAG_HIDE_BACK_BUTTON;
+            FLAG_DISABLE_PAGE_CLIPPING;
+
+    // Determines how long to wait after a rotation before restoring the screen orientation to
+    // match the sensor state.
+    private static final int RESTORE_SCREEN_ORIENTATION_DELAY = 500;
 
     public SpringLoadedState(int id) {
-        super(id, ContainerType.OVERVIEW, SPRING_LOADED_TRANSITION_MS, STATE_FLAGS);
+        super(id, ContainerType.OVERVIEW, SPRING_LOADED_TRANSITION_MS, 1f, STATE_FLAGS);
     }
 
     @Override
     public float[] getWorkspaceScaleAndTranslation(Launcher launcher) {
         DeviceProfile grid = launcher.getDeviceProfile();
         Workspace ws = launcher.getWorkspace();
-        if (ws.getChildCount() == 0) {
+        if (grid.isVerticalBarLayout() || ws.getChildCount() == 0) {
             return super.getWorkspaceScaleAndTranslation(launcher);
-        }
-
-        if (grid.isVerticalBarLayout()) {
-            float scale = grid.workspaceSpringLoadShrinkFactor;
-            return new float[] {scale, 0, 0};
         }
 
         float scale = grid.workspaceSpringLoadShrinkFactor;
@@ -58,8 +59,8 @@ public class SpringLoadedState extends LauncherState {
 
         float scaledHeight = scale * ws.getNormalChildHeight();
         float shrunkTop = insets.top + grid.dropTargetBarSizePx;
-        float shrunkBottom = ws.getMeasuredHeight() - insets.bottom
-                - grid.workspacePadding.bottom
+        float shrunkBottom = ws.getViewportHeight() - insets.bottom
+                - grid.getWorkspacePadding(null).bottom
                 - grid.workspaceSpringLoadedBottomSpace;
         float totalShrunkSpace = shrunkBottom - shrunkTop;
 
@@ -78,23 +79,37 @@ public class SpringLoadedState extends LauncherState {
         ws.showPageIndicatorAtCurrentScroll();
         ws.getPageIndicator().setShouldAutoHide(false);
 
+        // Lock the orientation:
+        if (launcher.isRotationEnabled()) {
+            launcher.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+        }
+
         // Prevent any Un/InstallShortcutReceivers from updating the db while we are
         // in spring loaded mode
         InstallShortcutReceiver.enableInstallQueue(InstallShortcutReceiver.FLAG_DRAG_AND_DROP);
-        launcher.getRotationHelper().setCurrentStateRequest(REQUEST_LOCK);
-    }
-
-    @Override
-    public float getWorkspaceScrimAlpha(Launcher launcher) {
-        return 0.3f;
     }
 
     @Override
     public void onStateDisabled(final Launcher launcher) {
         launcher.getWorkspace().getPageIndicator().setShouldAutoHide(true);
 
+        // Unlock rotation lock
+        if (launcher.isRotationEnabled()) {
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    launcher.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                }
+            }, RESTORE_SCREEN_ORIENTATION_DELAY);
+        }
+
         // Re-enable any Un/InstallShortcutReceiver and now process any queued items
         InstallShortcutReceiver.disableAndFlushInstallQueue(
                 InstallShortcutReceiver.FLAG_DRAG_AND_DROP, launcher);
+    }
+
+    @Override
+    public View getFinalFocus(Launcher launcher) {
+        return null;
     }
 }

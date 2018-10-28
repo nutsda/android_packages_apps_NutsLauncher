@@ -43,7 +43,6 @@ import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.graphics.DrawableFactory;
 import com.android.launcher3.model.PackageItemInfo;
-import com.android.launcher3.touch.ItemClickHandler;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
@@ -58,6 +57,8 @@ public class PendingAppWidgetHostView extends LauncherAppWidgetHostView
     private final LauncherAppWidgetInfo mInfo;
     private final int mStartState;
     private final boolean mDisabledForSafeMode;
+
+    private Bitmap mIcon;
 
     private Drawable mCenterDrawable;
     private Drawable mSettingIconDrawable;
@@ -84,7 +85,7 @@ public class PendingAppWidgetHostView extends LauncherAppWidgetHostView
 
         setElevation(getResources().getDimension(R.dimen.pending_widget_elevation));
         updateAppWidget(null);
-        setOnClickListener(ItemClickHandler.INSTANCE);
+        setOnClickListener(mLauncher);
 
         if (info.pendingItemInfo == null) {
             info.pendingItemInfo = new PackageItemInfo(info.providerName.getPackageName());
@@ -128,44 +129,53 @@ public class PendingAppWidgetHostView extends LauncherAppWidgetHostView
 
     @Override
     public void reapplyItemInfo(ItemInfoWithIcon info) {
+        Bitmap icon = info.iconBitmap;
+        if (mIcon == icon) {
+            return;
+        }
+        mIcon = icon;
         if (mCenterDrawable != null) {
             mCenterDrawable.setCallback(null);
             mCenterDrawable = null;
         }
-        if (info.iconBitmap != null) {
+        if (mIcon != null) {
             // The view displays three modes,
             //   1) App icon in the center
             //   2) Preload icon in the center
             //   3) Setup icon in the center and app icon in the top right corner.
             DrawableFactory drawableFactory = DrawableFactory.get(getContext());
             if (mDisabledForSafeMode) {
-                FastBitmapDrawable disabledIcon = drawableFactory.newIcon(info);
+                FastBitmapDrawable disabledIcon = drawableFactory.newIcon(mIcon, mInfo);
                 disabledIcon.setIsDisabled(true);
                 mCenterDrawable = disabledIcon;
                 mSettingIconDrawable = null;
             } else if (isReadyForClickSetup()) {
-                mCenterDrawable = drawableFactory.newIcon(info);
+                mCenterDrawable = drawableFactory.newIcon(mIcon, mInfo);
                 mSettingIconDrawable = getResources().getDrawable(R.drawable.ic_setting).mutate();
-                updateSettingColor(info.iconColor);
+
+                updateSettingColor();
             } else {
                 mCenterDrawable = DrawableFactory.get(getContext())
-                        .newPendingIcon(info, getContext());
+                        .newPendingIcon(mIcon, getContext());
+                mCenterDrawable.setCallback(this);
                 mSettingIconDrawable = null;
                 applyState();
             }
-            mCenterDrawable.setCallback(this);
             mDrawableSizeChanged = true;
         }
         invalidate();
     }
 
-    private void updateSettingColor(int dominantColor) {
+    private void updateSettingColor() {
+        int color = Utilities.findDominantColorByHue(mIcon, 20);
         // Make the dominant color bright.
         float[] hsv = new float[3];
-        Color.colorToHSV(dominantColor, hsv);
+        Color.colorToHSV(color, hsv);
         hsv[1] = Math.min(hsv[1], MIN_SATUNATION);
         hsv[2] = 1;
-        mSettingIconDrawable.setColorFilter(Color.HSVToColor(hsv),  PorterDuff.Mode.SRC_IN);
+        color = Color.HSVToColor(hsv);
+
+        mSettingIconDrawable.setColorFilter(color,  PorterDuff.Mode.SRC_IN);
     }
 
     @Override
